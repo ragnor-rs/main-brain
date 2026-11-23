@@ -1,0 +1,36 @@
+# Style for the Python this repository lints — the three trees, the hook helper, and the two
+# programs the board and report scripts call. Kotlin has detekt; this is the same bargain in the
+# other language, and for the same reason: style is the linter's to own so that review can spend
+# itself on everything else.
+#
+# ⚠️ It is the path list in `.github/workflows/ci.yml` that decides what is read, not this file:
+# the Python inside `scripts/check-docs.sh`'s heredocs is under a linted directory and is not
+# opened, because selection is by extension. That is a program a file would fix and this file
+# cannot.
+#
+# A `ruff.toml` rather than a `pyproject.toml`, because the repository is not a Python package
+# and should not claim to be one at its root.
+
+line-length = 100
+target-version = "py311"
+
+# No tree here is an installed package, so ruff has to be told where their modules live —
+# these paths are resolved relative to this file, not to wherever ruff is invoked. Without
+# it, import ordering treats a local module as a third-party library and asks for the
+# opposite of the right order.
+src = ["embeddings", "e2e", "eval", "scripts", ".claude/hooks"]
+
+exclude = [
+    "**/build",
+    "**/__pycache__",
+]
+
+[lint]
+select = [
+    "E",    # pycodestyle
+    "F",    # pyflakes
+    "I",    # import order
+    "B",    # bugbear
+    "UP",   # pyupgrade
+    "SIM",  # simplify
+]

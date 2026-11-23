@@ -1,0 +1,24 @@
+-- Which person records are the account the source was read through: our own, rather than a
+-- counterparty's.
+--
+-- Until now every account was held identically, so the account whose archive this is -- which
+-- authors more than half the messages and appears in every conversation -- was stored exactly like
+-- a counterparty who sent one message. Telling what is owed by us from what is owed to us needs
+-- this one fact, and nothing else in the corpus carries it.
+--
+-- **On `person` and not in `identifier`, which is the whole of the design.** A row in `identifier`
+-- is a claim a record advertises to help match it to another, and recognition scores a shared claim
+-- in proportion to how few records carry the value. A claim carried by exactly our own accounts
+-- would therefore be the rarest signal the scorer has, merging them at a weight nobody chose and
+-- for a reason that is not evidence about who they are. This is a fact about the reader's
+-- relationship to a record, so it sits on the record's own row where no matching read looks.
+--
+-- **Nullable, and null is not false.** It means the adapter could not report the account it
+-- authenticated as. A `NOT NULL DEFAULT false` would make every record in the corpus claim not to
+-- be one of ours, and nothing could tell that from a corpus where the question was never asked --
+-- which is the state every row is in until an adapter answers it.
+--
+-- Nothing is derived from this column, so no mark is invalidated and nothing is re-read by adding
+-- it: the answer path joins it live. The write is `COALESCE`d against what is stored, so a pass
+-- that could not ask does not erase what an earlier one established.
+ALTER TABLE person ADD COLUMN self boolean;

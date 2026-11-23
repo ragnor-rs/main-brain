@@ -1,0 +1,5 @@
+# Pinned rather than floating: Telethon's MTProto layer version-drifts, and a suite whose
+# whole job is to tell a defect in the system from a defect in the harness must not have its
+# client change underneath it.
+telethon==1.42.0
+pytest==9.1.1

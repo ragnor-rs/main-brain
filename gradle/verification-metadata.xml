@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  What the build refuses to run on.
+
+  This exists for one group. Every other dependency is served by Maven Central over TLS from a
+  host that does not republish a coordinate once it is taken; the Telegram client library is
+  served by its maintainer's own repository, where neither of those is something we can check.
+  So the trade is narrow on purpose: Central is trusted, `it.tdlight` is pinned by digest, and
+  a changed artifact behind a version we already resolved stops the build instead of reaching
+  the ingest container.
+
+  Pairs with the `exclusiveContent` block in `main-brain.kotlin-conventions.gradle.kts`. That
+  one bounds *what* the host may answer for; this one bounds *what the answer has to be*.
+  Either alone leaves the other's hole open.
+
+  Signatures are not verified because these artifacts are not signed. Saying so here is better
+  than a reader assuming `verify-signatures` was left false by accident.
+
+  To take a new version: change the catalogue, re-resolve with Gradle's
+  `write-verification-metadata` flag set to `sha256`, and keep only the `it.tdlight`
+  components it writes. Reading the digest off the repository that served the file would
+  verify nothing — it has to come from the artifact as resolved.
+  (The flag's own leading dashes are omitted above: XML forbids them inside a comment.)
+-->
+<verification-metadata xmlns="https://schema.gradle.org/dependency-verification"
+                       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                       xsi:schemaLocation="https://schema.gradle.org/dependency-verification https://schema.gradle.org/dependency-verification/dependency-verification-1.3.xsd">
+    <configuration>
+        <verify-metadata>true</verify-metadata>
+        <verify-signatures>false</verify-signatures>
+        <trusted-artifacts>
+            <!-- Everything that is not the one group this file exists for. The negative
+                 lookahead is what keeps the list from being every other group in the build,
+                 which would need editing on each new dependency and would then be edited
+                 without being read. -->
+            <trust group="^(?!it[.]tdlight$).*" regex="true"/>
+            <!-- Sources and javadoc are fetched by an IDE sync rather than by the build, and
+                 nothing executes them. Pinning them would make an IDE action able to fail a
+                 build it is not part of. -->
+            <trust file=".*-sources[.]jar" regex="true"/>
+            <trust file=".*-javadoc[.]jar" regex="true"/>
+        </trusted-artifacts>
+    </configuration>
+    <components>
+        <component group="it.tdlight" name="tdlight-java" version="3.4.4+td.1.8.52">
+            <artifact name="tdlight-java-3.4.4+td.1.8.52.jar">
+                <sha256 value="9ece73179160e1f4d47f29da2776d6a4312c51ed877eb83b347d3314c93b008a"/>
+            </artifact>
+            <artifact name="tdlight-java-3.4.4+td.1.8.52.pom">
+                <sha256 value="4af0f9cfaca97f4d826f03aba4073d156ce46eb502016db5c13bd508ef619338"/>
+            </artifact>
+        </component>
+        <!-- Resolved transitively by the wrapper above rather than declared in the catalogue.
+             It still needs pinning: a transitive artifact runs exactly as much code as a
+             direct one.
+
+             Two jars, not one. The wrapper's POM depends on this module twice — once plain and
+             once at the `legacy` classifier — so both land on the runtime classpath and both
+             have to be covered. Listing only the obvious one is how this file ends up looking
+             complete while leaving an artifact unchecked. -->
+        <component group="it.tdlight" name="tdlight-api" version="4.0.528">
+            <artifact name="tdlight-api-4.0.528.jar">
+                <sha256 value="1754e5283ed9c6c3bdfcca7dd7a957a1635d54672d65912f98b1dc9c3116e624"/>
+            </artifact>
+            <artifact name="tdlight-api-4.0.528-legacy.jar">
+                <sha256 value="4ff79f2eecf63d85a08fa4f13e6ff2e348e71d490feb20ba2631811025686ad1"/>
+            </artifact>
+            <artifact name="tdlight-api-4.0.528.pom">
+                <sha256 value="f312b4e0fd421360b89fdf5b876dc92085ffa665a269580a4381a638d0e26a1d"/>
+            </artifact>
+        </component>
+        <!-- The compiled library. Two classifiers are pinned because two are resolved: the
+             image is glibc with OpenSSL 3, on amd64 and on arm64. Building for another platform would resolve an
+             artifact this file does not cover, and would fail here rather than silently ship a
+             binary nobody checked. -->
+        <component group="it.tdlight" name="tdlight-natives" version="4.0.558">
+            <artifact name="tdlight-natives-4.0.558-linux_amd64_gnu_ssl3.jar">
+                <sha256 value="77a948852a2d9ada423b6cde3c7c1dbc8fdebfc8d78c1f982549243c3f0fc5ad"/>
+            </artifact>
+            <artifact name="tdlight-natives-4.0.558-linux_arm64_gnu_ssl3.jar">
+                <sha256 value="377afe8eea219f7e400fff0092b986dac898d7d02ea8ff06585ca913279a6622"/>
+            </artifact>
+            <artifact name="tdlight-natives-4.0.558.pom">
+                <sha256 value="35c022f93e2a57112d86a874964b99d27849be57dc9ee6e107721111a30708c7"/>
+            </artifact>
+        </component>
+    </components>
+</verification-metadata>

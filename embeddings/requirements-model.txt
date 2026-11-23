@@ -1,0 +1,30 @@
+# The inference stack: everything needed to turn text into vectors, and nothing the service
+# needs to merely answer. Installed into the image, never into the test environment.
+#
+# The CPU build of the tensor library, from the index that publishes it. The default package
+# on the public index carries CUDA and pulls a further stack of vendor libraries behind it —
+# gigabytes of accelerator runtime that cannot be used, because nothing in this deployment has
+# a GPU. The `+cpu` suffix exists on no other index, so this cannot silently resolve to the
+# accelerator build if the extra index is unreachable: it fails instead, which is the right
+# way round.
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.8.0+cpu
+
+# A general sentence-encoder library rather than one model's own reference implementation.
+# Measured, this is the difference between a sidecar that answers and one that cannot: the
+# reference implementation of a hybrid model spent about a second per short message on this
+# processor and degraded superlinearly with batch size, which put a full index in hours and a
+# single query embedding — on the answer path, where a person is waiting — at six seconds.
+#
+# What it gives up is the hybrid model's term weights, which came from the same pass as the
+# dense vector. Nothing emits both at a size that answers quickly, so the lexical half of the
+# fused read goes; the store holds an empty vector for it and the read falls back to its
+# vector half, both of which are specified for exactly this.
+sentence-transformers==3.3.1
+
+# Pinned below 5 for the same reason the line above is pinned at all: a resolver left to pick
+# the newest reaches a symbol removed in 5, and nothing says so until a model is actually
+# loaded. The service then starts, reports itself healthy, stays unready for the life of the
+# process and refuses every embed, with one logged exception as the only evidence — which is
+# harder to read than a failure would be, not easier.
+transformers==4.57.6

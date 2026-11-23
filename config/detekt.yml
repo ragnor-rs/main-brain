@@ -1,0 +1,56 @@
+# Overrides on top of detekt's default configuration — `buildUponDefaultConfig` is on, so
+# everything not named here keeps its default. Style is the linter's to own, not a review
+# topic, which is the only reason this file is allowed to be short.
+
+build:
+  maxIssues: 0
+
+formatting:
+  active: true
+  MaximumLineLength:
+    maxLineLength: 120
+
+style:
+  MaxLineLength:
+    maxLineLength: 120
+  # Wildcard imports hide which package a name came from, and the architecture rules are read
+  # off imports — a wildcard is not merely untidy here, it is a rule that cannot be checked.
+  # `excludeImports` is emptied deliberately: both detekt and ktlint permit `java.util.*` by
+  # default, which is exactly the import that would hide a type from those rules.
+  WildcardImport:
+    active: true
+    excludeImports: []
+  ForbiddenComment:
+    active: true
+    comments:
+      - reason: "A TODO without an issue is a decision nobody will be reminded of."
+        value: "TODO:"
+      - reason: "Likewise."
+        value: "FIXME:"
+
+complexity:
+  TooManyFunctions:
+    # `excludes` replaces detekt's own list rather than adding to it, so the test-source entry
+    # has to be restated or it is lost — a test class is a list of cases, and counting them
+    # measures coverage rather than complexity. It is written as this project's own layout rather
+    # than copied from the rule's defaults, which enumerate eight source sets this build has no
+    # equivalent of. The script entry is not one of that rule's defaults at all.
+    excludes:
+      - "**/src/test/**"
+      - "**/*.kts"
+      # The JDBC parameter binder is one function per SQL type, and that is the point of it —
+      # the alternative is every call site hand-counting placeholder positions. Counting those
+      # one-line functions against it measures how many types Postgres has.
+      - "**/Binder.kt"
+  LargeClass:
+    # Excluded for the same reason as TooManyFunctions above, and only there: a test class is a
+    # list of cases, so its length measures how much of the unit is covered rather than how much
+    # the unit does. Splitting one to satisfy a line count scatters the cases for a behaviour
+    # across files and makes the coverage harder to read, not the code simpler.
+    excludes:
+      - "**/src/test/**"
+  LongParameterList:
+    # A composition root wires a whole process by hand, so it legitimately takes many
+    # collaborators. Everything else stays at the default.
+    ignoreAnnotated:
+      - "CompositionRoot"

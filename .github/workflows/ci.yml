@@ -1,0 +1,174 @@
+name: CI
+
+# Everything hermetic runs here. The end-to-end suite mostly does not: a case that drives the
+# account, inspects the stack or answers from the corpus declares a marker, and this workflow runs
+# without credentials of any kind, so those are deselected. What is left of that tree is the
+# readers its cases assert through, which touch nothing. The credential rule is worth more than the
+# rest of the coverage — nothing in CI can be made to leak a session file or an API key, because
+# neither is reachable from it.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A second push to a branch makes the first run's answer irrelevant.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  jvm:
+    # Pinned, and the only job that is. ⚠️ `ubuntu-latest` carries Docker 29 (API 1.54), which
+    # the docker-java inside Testcontainers cannot drive: every store test fails with "Could
+    # not find a valid Docker environment" while the socket answers `/_ping` and `docker run`
+    # in the same step. Measured on both images in one run — the suite passes on 24.04 (Docker
+    # 28, API 1.48) and fails on 26.04 — and raising Testcontainers to 1.21.3, the newest
+    # published, changes nothing. A developer machine on Docker 28 cannot reproduce it, so
+    # moving this back takes a release whose client handles API 1.54 and a CI run to prove it.
+    # The other three jobs need no Docker and stay on the moving label.
+    name: jvm — detekt and tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      # The runner provides Docker, which is what lets the store tests run against a real
+      # Postgres through Testcontainers. Mocking it would prove that the mock behaves like
+      # the mock.
+      - name: detekt and test
+        run: ./gradlew detekt test --no-daemon
+
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jvm-reports
+          path: |
+            **/build/reports/
+            **/build/test-results/
+          retention-days: 7
+
+  python:
+    name: python — ruff and sidecar tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install
+        # ruff is pinned like everything else. An unpinned linter turns the build red on a
+        # day nobody changed any code, which teaches people that red means "try again".
+        #
+        # The end-to-end harness's own requirements are installed for the step below, which
+        # collects that tree: importing its cases imports its Telegram client, whether or not the
+        # selected cases drive an account.
+        run: |
+          pip install ruff==0.16.2
+          pip install -r embeddings/requirements-dev.txt
+          pip install -r e2e/requirements.txt
+
+      # The three trees, the hook helper, and the two programs the board and report scripts call.
+      # ⚠️ This list is what decides coverage, and selection is by extension: the Python inside
+      # `scripts/check-docs.sh`'s heredocs is under a path named here and is not read, which only
+      # moving it to a file would change. Two of the trees are tested here, and the end-to-end one
+      # only where it declares that it reaches nothing — see below.
+      - name: ruff
+        run: ruff check embeddings/ e2e/ eval/ .claude/hooks/ scripts/
+
+      # **The readers the rendered cases assert through, and nothing that needs the world.** Those
+      # cases hold a delivered answer to what the store places on the subject, and an assertion
+      # nobody has seen fail is not known to work — so each reader is driven here with a passage
+      # that has the property and one that breaks it. None of that needs an account, a stack or a
+      # corpus, which is what makes CI the right tier for it: a calibration that only runs where
+      # somebody deploys is one nobody re-runs.
+      #
+      # **Selected by marker, not by file name.** Everything that reaches the world carries one of
+      # the three, so a hermetic case added later is covered by this rule and a case that grows a
+      # dependency on the world drops out of it by declaring the marker. A list of file names would
+      # go stale silently in both directions.
+      #
+      # `MB_E2E_TARGET` is the suite's own guard against running anywhere but the dev stack, and it
+      # is read at collection; nothing selected here opens a connection to anything.
+      - name: pytest — the end-to-end tree's hermetic readers
+        run: MB_E2E_TARGET=dev pytest e2e/ -v -rs -m "not telegram and not stack and not corpus"
+
+      # Scoped to `embeddings/` deliberately, and not a bare `pytest`. The end-to-end tree is
+      # also Python and also carries tests; collecting it whole here would reach for a Telegram
+      # account and a running stack, neither of which exists in CI — which is why the step above
+      # selects by marker rather than running that tree entire.
+      #
+      # No model is downloaded, and not because the tests are careful: the inference stack is
+      # in `requirements-model.txt`, which this job does not install, so the import the loader
+      # makes cannot resolve here at all. The sidecar starts loading its weights as soon as it
+      # starts, which makes that structural guarantee the thing standing between this job and
+      # a multi-gigabyte fetch — so one of the tests asserts it directly, and adding the
+      # inference stack to the dev requirements goes red here rather than in a download.
+      - name: pytest
+        run: pytest embeddings/ -v
+
+  docs:
+    name: docs — the document gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The documents are most of what this repository ships, and they are the thing a
+      # second developer reads first. The script says which of its assertions are computed
+      # and which merely quote a sentence back at a file; the second kind catches a
+      # deletion and nothing subtler. Every assertion is hermetic, so this job reaches the
+      # same verdict a checkout does, and one that cannot run reports SKIP rather than
+      # passing quietly.
+      - name: check-docs
+        run: ./scripts/check-docs.sh
+
+  shell:
+    name: shell — shellcheck and parse
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Committed shell gates a merge, a deploy, and now every Bash call the harness makes —
+      # `scripts/` and `.claude/hooks/`, and nothing was reading any of it.
+      # **Neither defect found in `deploy.sh` so far would have been caught here** — a
+      # silent exit from `shift 2` under `set -e`, and a pinned `sed` range that printed less
+      # of the header than it meant to, are both clean to `bash -n` and to `shellcheck` at
+      # every severity. This gate is worth having for what a linter does catch, not as a
+      # retelling of those two: unquoted expansions, a masked return value, a variable read
+      # before it is set.
+      #
+      # `shellcheck` reports parse errors itself, so this step adds only the divergence
+      # between its parser and the one that will actually run the script.
+      - name: bash -n
+        run: |
+          for f in scripts/*.sh .claude/hooks/*.sh; do bash -n "$f"; done
+
+      # Pinned, like ruff above and for the same reason: the version the runner image happens
+      # to carry moves when the image does, and a linter that reddens the build on a day
+      # nobody changed any code teaches people that red means "try again".
+      #
+      # `--severity=warning` is a floor, not a claim to completeness. It drops SC2015
+      # (`A && B || C is not if-then-else`), which fires on this repository's own
+      # `… && ok || bad` lines — those are sound, because `ok` cannot fail, and the day one
+      # of them calls something that can, the threshold is what will need revisiting.
+      - name: shellcheck
+        env:
+          SHELLCHECK_VERSION: v0.11.0
+        run: |
+          curl -sSLo shellcheck.tar.xz \
+            "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
+          tar -xJf shellcheck.tar.xz
+          "shellcheck-${SHELLCHECK_VERSION}/shellcheck" --version
+          "shellcheck-${SHELLCHECK_VERSION}/shellcheck" --severity=warning scripts/*.sh .claude/hooks/*.sh

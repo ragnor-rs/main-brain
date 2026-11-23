@@ -1,0 +1,10 @@
+# Pinned rather than floating, for the reason the end-to-end suite pins: a suite whose whole job
+# is to tell a defect in the system from a defect in the harness must not have its dependencies
+# change underneath it. A floating pin here would make "retrieval got worse" a thing that can be
+# caused by a driver release.
+#
+# Two packages, and no HTTP client. The one request this suite makes is a JSON POST, which
+# `urllib` does — and a client library would be a dependency carried for convenience in the file
+# whose point is that nothing moves.
+pytest==9.1.1
+psycopg[binary]==3.2.3

@@ -1,0 +1,156 @@
+# Every dependency version in the build. A version literal anywhere else is a bug: two places
+# to change is one place to forget, and the forgotten one is always the module nobody touched.
+
+[versions]
+kotlin = "2.2.20"
+coroutines = "1.10.2"
+detekt = "1.23.8"
+shadow = "9.2.2"
+junit = "5.11.4"
+konsist = "0.17.3"
+testcontainers = "1.20.4"
+postgresql = "42.7.4"
+flyway = "10.20.1"
+hikari = "5.1.0"
+ktor = "3.2.3"
+
+# The frontend's Ktor, which is deliberately not the version everything else uses.
+#
+# `dev.inmo:tgbotapi` is built against a newer client core and raises it transitively, so the
+# engine and the content-negotiation pair have to come up with it — a 3.2 engine beside a 3.5
+# core is a mix nothing guarantees, and the failure it would produce is a missing method at run
+# time rather than a compile error.
+#
+# Raising the build-wide version instead is a bigger change than it looks, and it was measured
+# rather than guessed: the backend's surface answers a request of the wrong content type with
+# 415 on 3.2.3 and with 500 on 3.5.2, which turns a refusal carrying a message key into an
+# unexpected failure. That belongs to an issue about the surface rather than to this one.
+ktorBot = "3.5.2"
+serialization = "1.8.1"
+anthropic = "2.52.0"
+tgbotapi = "36.1.0"
+
+# Two versions for one library, because the wrapper and the compiled TDLib it calls are
+# released on separate numbering. Pairing them by eye is what fails: this wrapper's own POM
+# pins the natives it was built against, and that pin is where `tdlight-natives` below comes
+# from. A newer wrapper is not automatically safe to take — the releases after this one stop
+# declaring a natives version at all, which moves the pairing back onto us.
+tdlight = "3.4.4+td.1.8.52"
+tdlight-natives = "4.0.558"
+
+# The generated protocol classes, pinned here as well as by the wrapper — because the wrapper
+# declares them *twice*, plain and at a `legacy` classifier, and picks between the two in Maven
+# profiles that Gradle does not evaluate. Both therefore resolve, both carry the same 2 890
+# class names compiled for different Java versions, and the fat jar ends up with two copies of
+# each: which one the virtual machine loads is decided by entry order. So the module is excluded
+# from the wrapper and taken from here instead, at the version the wrapper's own POM declares.
+tdlight-api = "4.0.528"
+
+# The logging facade's own version, which several libraries already agree on. Only the binding
+# is declared below: the facade arrives transitively, and naming one version in two places is
+# how the two drift apart.
+slf4j = "2.0.17"
+
+[libraries]
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
+
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
+
+testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
+testcontainers-junit = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+hikari = { module = "com.zaxxer:HikariCP", version.ref = "hikari" }
+
+# Flyway 10 moved each database's support out of the core artifact. Without the Postgres
+# one on the classpath, `migrate()` fails at run time on a `jdbc:postgresql:` URL that
+# core resolves no handler for — so the two entries are a pair, not a choice.
+flyway-core = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgresql = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+
+# The outbound HTTP client, which reaches the embeddings sidecar. OkHttp is the engine rather
+# than the default so that connection pooling and timeouts are a configured thing; the
+# content-negotiation pair is what turns a response body into a declared type instead of a
+# string the call site parses.
+# Aligns every Ktor artifact in one module onto one version, which is what the frontend needs:
+# it declares an engine and a negotiation pair, and a transitive dependency raises the core
+# underneath them. Applied in `:bot` only — every other module takes the version above.
+ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktorBot" }
+
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-mock = { module = "io.ktor:ktor-client-mock", version.ref = "ktor" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "serialization" }
+
+# The inbound surface, which the bot reaches and nothing else does. Netty rather than CIO
+# because it is the engine the topology names, and the choice is not worth having two answers
+# to: one process serves one client over a Compose network.
+#
+# `status-pages` is the half that makes the error contract hold. Without it an exception the
+# surface did not anticipate becomes Ktor's own plain-text 500, which is a body carrying a
+# sentence — and a sentence is the one thing the wire format forbids. With it, every escape maps
+# to a status and a message key.
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-server-status-pages = { module = "io.ktor:ktor-server-status-pages", version.ref = "ktor" }
+
+# Serves the application in-process, so status codes, the auth rejection and the response
+# shapes are all testable without a socket and therefore in CI.
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+# The model client. Its published API is Java-shaped — builders and `Optional` where the rest
+# of this build would have named arguments and nullables — which is why the adapter reads
+# unlike its neighbours. That shape stops at the port.
+anthropic = { module = "com.anthropic:anthropic-java", version.ref = "anthropic" }
+
+# The Telegram Bot API, which the frontend reaches by long polling. A different system from the
+# user session below: one converses as a bot over the Bot API, the other reads history as a user
+# over MTProto, and neither artifact appears in the other's image.
+#
+# Kotlin-first and coroutine-shaped, so the adapter maps onto a `suspend` port without a bridge,
+# and served from Maven Central — which is what keeps the one non-Central host in this build at
+# one. The umbrella module rather than `tgbotapi.core`: the update-retrieval extensions live
+# above core, and splitting them out would pin two coordinates to save a dependency the fat jar
+# carries either way.
+tgbotapi = { module = "dev.inmo:tgbotapi", version.ref = "tgbotapi" }
+
+# The Telegram user session. TDLib is C++, so the JVM reaches it over JNI and the compiled
+# library is a second artifact rather than a platform-independent jar — which is why this is a
+# pair and why only the ingest image carries it.
+#
+# The classifier names three things that must all match the image: the architecture, the C
+# library, and the major OpenSSL the natives link against. `eclipse-temurin:21-jre` is glibc
+# with OpenSSL 3, so `linux_amd64_gnu_ssl3` is the one that loads there; a musl base would
+# find no artifact published at all. The jar carries the natives for whatever the *image*
+# runs, not for whatever built it, so a developer machine of another architecture changes
+# nothing here — and must not, or the deployed container would depend on who deployed it.
+tdlight = { module = "it.tdlight:tdlight-java", version.ref = "tdlight" }
+tdlight-api = { module = "it.tdlight:tdlight-api", version.ref = "tdlight-api" }
+tdlight-natives = { module = "it.tdlight:tdlight-natives", version.ref = "tdlight-natives" }
+
+# A logging binding, needed because the Telegram client library is the first dependency here
+# that says anything worth reading — its authorisation states, its own errors, and the native
+# library's complaints. Without a binding on the classpath the facade discards all of it and
+# prints a warning saying so, which is the state in which an unauthorised session looks like a
+# silent one. The simple binding rather than a framework: one destination, standard error, and
+# no configuration file to be wrong.
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+slf4j-simple = { module = "org.slf4j:slf4j-simple", version.ref = "slf4j" }
+
+# Referenced by the convention plugin rather than by a module, so detekt's own version is
+# pinned here with everything else instead of in the build-logic build.
+detekt-formatting = { module = "io.gitlab.arturbosch.detekt:detekt-formatting", version.ref = "detekt" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+# Versioned with the compiler rather than with the runtime library: the plugin ships inside
+# the Kotlin distribution, so the two cannot be chosen independently.
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }

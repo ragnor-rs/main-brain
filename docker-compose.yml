@@ -1,0 +1,429 @@
+# Five containers on one machine. The count is a consequence of recognition and indexing
+# running inside the backend as scheduled passes rather than as processes of their own.
+#
+# No serving service publishes a host port. Everything that talks to anything does so on the
+# Compose network, and reaching a service from outside is `docker compose exec` — which is a
+# deliberate obstacle, because the one machine this runs on sits on a residential connection.
+#
+# The two under the `eval` profile are the exception, and they are not part of the serving
+# stack: the evaluation set runs as host `pytest`, so it reaches its own backend and its own
+# store over the loopback address. Both are bound to `127.0.0.1` rather than to every
+# interface, which is what keeps the obstacle above where it was for anything off the machine.
+
+# Deliberately unnamed, so Compose derives the project from the directory. Work happens in
+# worktrees under `.claude/worktrees/<branch>/`, and that default is what keeps each branch's
+# stack, database and — bar the one volume named below — volumes to itself. Both sides
+# agree on which project they mean without being told: `deploy.sh` and `e2e/config.py` each
+# resolve the root from their own location, so a deploy and the suite that checks it are
+# always the same tree.
+#
+# Pinning one name would undo that — a deploy from one worktree would replace another's
+# containers, and the suite would report those healthy against the wrong branch's code. On
+# the host there is one checkout in one directory, so the derived name is stable there.
+#
+# Two volumes can sit outside that isolation, and each says so where it is declared. The
+# embedding weights cache always does: the sidecar fetches it once and then only reads it, and
+# which bytes it fetches follows from `EMBEDDING_MODEL` alone — so a copy each buys no isolation
+# and costs gigabytes of it. The Telegram session can, by setting one variable, for a different
+# reason: it is not isolation that a copy per worktree costs but *sign-in attempts*, and enough
+# of those locks the account out for most of a day.
+#
+# The store each worktree writes stays its own, which is the point of the default.
+
+# Every service below sets `init: true`, stated here once rather than beside each of them.
+# It puts a minimal init process in front of the entrypoint as PID 1, and that process does the
+# two things PID 1 owes the kernel: forward signals to the application, and reap the children
+# the application abandons. Without it the application itself is PID 1, and one that never
+# reaps accumulates zombies the kernel will not clear — at which point Docker cannot stop the
+# container by signal at all. That failure is not confined to the container holding the zombie:
+# a recreate renames the old container aside before starting its replacement, so a stop that
+# cannot complete aborts the deploy with a `<hash>_<service>` container left behind, whose name
+# then collides with the next attempt. One stuck process therefore costs two deploys.
+#
+# On every service rather than only on the ones that fork today. The cost is a single extra
+# process per container, and scoping it to who spawns workers makes this file something to
+# revisit whenever a service starts spawning something — a revisit whose omission is invisible
+# until a deploy dies.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    init: true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mainbrain}
+      POSTGRES_USER: ${POSTGRES_USER:-mainbrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      # Named, and never removed by the deploy. The store holds years of re-ingested history:
+      # losing it costs days of rate-limited backfill, not minutes.
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mainbrain} -d ${POSTGRES_DB:-mainbrain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  embeddings:
+    build: ./embeddings
+    restart: unless-stopped
+    init: true
+    environment:
+      # The default is the model the index is dimensioned for. Overridable, but not freely:
+      # another model of another width needs a migration, so this travels with the schema
+      # rather than being a knob.
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-intfloat/multilingual-e5-base}
+      # Where the weights land. Named here as well as in the image so that the volume below
+      # and the cache the library actually writes to cannot drift apart.
+      HF_HOME: /models
+    volumes:
+      # The weights, which are gigabytes and are fetched rather than built. Without a named
+      # volume every recreate re-downloads them — and a recreate is what redeploying this
+      # service *is*, so the cost would land on an ordinary deploy rather than on a rebuild.
+      # Separate from the image for the same reason: code changes often, weights almost never.
+      - embeddings-models:/models
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      embeddings:
+        condition: service_started
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mainbrain}
+      DATABASE_USER: ${POSTGRES_USER:-mainbrain}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      EMBEDDINGS_URL: http://embeddings:8000
+      # Recognition and the answer path are the only things that call a model.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      # Optional, each with a default the deployment does not need to state: how long to leave
+      # between sweeps of each derived pass, how far back inference reads, how many messages one of
+      # its sweeps reads at once, and what it may spend in a day reading them. The two cadences are
+      # separate because the passes cost differently — indexing is local compute against the
+      # sidecar, while inference spends the model budget per window — and a malformed value stops
+      # the process rather than reading as unset.
+      #
+      # The horizon and the two allowances are the ones that cost money, and they bound different
+      # things: the horizon how much work a sweep may find, and the allowances how much recognition
+      # may pay in a day before leaving the rest owed. A sweep drains until nothing is owed, so
+      # without them the cadence says when a sweep starts and nothing at all about what it spends.
+      #
+      # Neither `EMBEDDINGS_URL` nor `ANTHROPIC_API_KEY` is required either, and what each absence
+      # switches off is a pass rather than the process: without the sidecar nothing is indexed,
+      # without the credential nothing is inferred, and identity needs neither. That is what lets
+      # this stack come up credential-free, which is how the store and ingestion are exercised.
+      INDEXING_SECONDS_BETWEEN_SWEEPS: ${INDEXING_SECONDS_BETWEEN_SWEEPS:-}
+      RECOGNITION_SECONDS_BETWEEN_SWEEPS: ${RECOGNITION_SECONDS_BETWEEN_SWEEPS:-}
+      RECOGNITION_HORIZON_DAYS: ${RECOGNITION_HORIZON_DAYS:-}
+      # How many messages one sweep of inference reads at once, which is the only thing that decides
+      # how fast a backlog drains. The cadence above cannot: a stage holds one submission with the
+      # provider at a time, so the rate is this figure over a batch's turnaround and a shorter
+      # cadence only shortens the wait before a finished batch is read. It paces rather than prices
+      # — a message costs what it costs however many it is read beside — so the allowances below are
+      # still what bound the day.
+      RECOGNITION_MESSAGES_PER_SWEEP: ${RECOGNITION_MESSAGES_PER_SWEEP:-}
+      # How far past a promise the closure stage keeps looking for what discharged it. Measured
+      # from each commitment rather than from the sweep, so it bounds the re-reading and not which
+      # commitments are eligible: a promise older than this is still examined once, which is what
+      # a backfilled archive needs.
+      RECOGNITION_CLOSURE_DAYS: ${RECOGNITION_CLOSURE_DAYS:-}
+      # And how much new material brings a commitment back inside that horizon. The other half of
+      # the same judgement, measured in messages: one call is billed for its instruction and the
+      # promise whether it weighs one new message or a full window, so with no floor a conversation
+      # arriving a message at a time buys a call per message and pays mostly for the fixed part.
+      # It costs latency and never a finding — the floor lapses as the horizon closes, so material
+      # a bounded window could not reach is read before the commitment is settled.
+      RECOGNITION_CLOSURE_REARM_MESSAGES: ${RECOGNITION_CLOSURE_REARM_MESSAGES:-}
+      # Whether the half of recognition that spends the model budget runs at all. OFF unless this
+      # says `true`, which is the one default in this stack chosen against what the build would
+      # like: a sweep drains whatever is owed the moment the container is healthy, so a stack
+      # nobody meant to leave running spends the credit on its own schedule. Identity still runs.
+      RECOGNITION_INFERENCE_ENABLED: ${RECOGNITION_INFERENCE_ENABLED:-}
+      # What recognition may spend in a calendar day once it is allowed to spend anything: the
+      # switch above decides whether a sweep runs, the horizon bounds what it may find, and these
+      # bound what draining that backlog costs before the rest is left for tomorrow. Two axes
+      # because the provider prices input and output an order of magnitude apart, and either one
+      # running out stops the reading for the remainder of that day.
+      RECOGNITION_INPUT_TOKENS_PER_DAY: ${RECOGNITION_INPUT_TOKENS_PER_DAY:-}
+      RECOGNITION_OUTPUT_TOKENS_PER_DAY: ${RECOGNITION_OUTPUT_TOKENS_PER_DAY:-}
+      # Whether the pass that judges which named conversations stand for a body of work runs, and
+      # how long between its sweeps. OFF unless this says `true`, for the reason inference is off
+      # and one more of its own: it pays only where a source mixes bodies of work with thematic
+      # tracks, and where every named conversation is already work it rejects nothing. Nothing
+      # downstream waits for it — a conversation it has not judged is a client exactly as it was.
+      # It draws on a fraction of the daily allowances above rather than the whole of them, so a
+      # second spending pass adds a little to what a day can cost rather than doubling it. The
+      # cadence is the longest here because the pass converges: a verdict stands until a new
+      # conversation arrives or the instruction is reworded.
+      ADMISSION_ENABLED: ${ADMISSION_ENABLED:-}
+      ADMISSION_SECONDS_BETWEEN_SWEEPS: ${ADMISSION_SECONDS_BETWEEN_SWEEPS:-}
+      # Which model each kind of work asks, and what one question may spend. Optional, each
+      # with a default the process states. These reach the container the same way the cadences
+      # above do: a variable this file does not name is never passed in, because Compose reads
+      # `.env` for interpolation only — so documenting one without listing it here would leave a
+      # dial that turns nothing.
+      #
+      # `BULK_MODEL` is the one that costs money to change rather than to set: an extractor's
+      # watermark carries the model it read with, so moving it re-derives whatever is inside
+      # `RECOGNITION_HORIZON_DAYS` on the next sweep, at the new model's prices.
+      ANSWER_MODEL: ${ANSWER_MODEL:-}
+      BULK_MODEL: ${BULK_MODEL:-}
+      ANSWER_EFFORT: ${ANSWER_EFFORT:-}
+      RESEARCH_EFFORT: ${RESEARCH_EFFORT:-}
+      ANSWER_MAX_TOKENS_PER_REQUEST: ${ANSWER_MAX_TOKENS_PER_REQUEST:-}
+      CORPUS_TIME_ZONE: ${CORPUS_TIME_ZONE:-}
+      # Required, and the process is what says so — it reads this at startup and stops, naming
+      # it. Defaulted-empty here for the same reason the source credentials below are: an
+      # interpolation this file refuses stops every Compose command for every service, `ps`
+      # included, so one unset secret would make the whole stack uninspectable. `scripts/deploy.sh`
+      # carries the precondition that catches it before anything is built.
+      BACKEND_SECRET: ${BACKEND_SECRET:-}
+    healthcheck:
+      # `curl` rather than a probe of our own: the JRE image carries it, so this costs no layer
+      # and no second process type. The route answers 200 only when the store answers, so a
+      # pass here means the service can serve rather than that the virtual machine is up —
+      # which is what the `service_healthy` condition below is worth anything for.
+      #
+      # Deliberately not a probe of the embeddings sidecar. A cold one spends minutes loading
+      # weights while refusing every call, and a backend that reported itself unhealthy
+      # throughout would hold the bot back for a dependency only some of its work needs.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health"]
+      interval: 10s
+      # Ten, not the five seconds a route answering from one indexed read would need. The
+      # sidecar starts alongside this service and its first act is to load several gigabytes of
+      # weights, which holds the processor in stretches — so the thing this timeout has to cover
+      # is not the query but waiting for a core while that happens.
+      timeout: 10s
+      # Five, with the startup window below carrying a slow start. The two together are what
+      # keep a real failure quick to notice without making contention look like one: the bot now
+      # waits on `service_healthy`, and a deploy runs under `set -euo pipefail`, so a healthcheck
+      # that flapped under load would abort the deploy rather than delay it.
+      retries: 5
+      # Failures in here are not counted at all, which is where migrations against a cold
+      # database belong — and where the sidecar's own load sits. Sized against what that load
+      # was measured to cost on this machine rather than against how long this service takes,
+      # which is seconds.
+      start_period: 60s
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    init: true
+    depends_on:
+      backend:
+        # Healthy rather than started, now that there is a surface to be healthy about. The bot
+        # does nothing but call the backend, so starting before it can answer buys a window in
+        # which every request fails for a reason that is not the one a reader would look for.
+        condition: service_healthy
+    environment:
+      BACKEND_URL: http://backend:8080
+      BACKEND_SECRET: ${BACKEND_SECRET:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      ALLOWED_TELEGRAM_IDS: ${ALLOWED_TELEGRAM_IDS:-}
+      # The same value the backend is given, because it is the same fact: the calendar the
+      # corpus's material is dated in. A citation names the day a message was written, and an
+      # instant has no day until a zone says so — so set in one place or a reply dates one
+      # message two ways.
+      CORPUS_TIME_ZONE: ${CORPUS_TIME_ZONE:-}
+      # No database credential and no model key. The bot reaches everything through the
+      # backend, which is the seam that makes that absence enforceable rather than polite.
+
+  # --- the evaluation stack ------------------------------------------------------------------
+  #
+  # Two services behind the `eval` profile, so nothing below starts on an ordinary `up` and the
+  # serving stack above is untouched by anything the evaluation set does.
+  #
+  # **Its own store, because the suite has to own what it scores.** The corpus above is whatever
+  # ingestion has read so far and mutates daily; a suite scored against it would measure the
+  # corpus rather than the code, which is the one thing a gate on retrieval must not do. So the
+  # fixtures go into a database nothing else writes, and `eval/` wipes and rebuilds it whenever
+  # they change.
+  #
+  # **The sidecar is shared, and that is the one thing these two reach out of the profile for.**
+  # Its weights are gigabytes and a cold load is minutes long while refusing every call, so a
+  # second copy would make an evaluation run slower than the deploy that triggers it. Sharing it
+  # is safe in the way the store is not: the sidecar holds nothing between calls.
+
+  postgres-eval:
+    profiles: [eval]
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    init: true
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mainbrain}
+      POSTGRES_USER: ${POSTGRES_USER:-mainbrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    ports:
+      # Published, unlike everything else here, and bound to the loopback address rather than to
+      # every interface. The suite seeds the fixtures over SQL and waits for the derived passes
+      # by reading them back, which is a connection no service on the Compose network makes.
+      - "127.0.0.1:${EVAL_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      # Named, so a prepared corpus survives a restart. Rebuilding it costs a recognition sweep
+      # over the fixtures, which is the one part of preparing it that spends the model budget --
+      # so the suite rebuilds on a changed fixture or a stale one and reuses it otherwise.
+      - eval-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mainbrain} -d ${POSTGRES_DB:-mainbrain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend-eval:
+    profiles: [eval]
+    build: ./backend
+    restart: unless-stopped
+    init: true
+    depends_on:
+      postgres-eval:
+        condition: service_healthy
+      embeddings:
+        condition: service_started
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres-eval:5432/${POSTGRES_DB:-mainbrain}
+      DATABASE_USER: ${POSTGRES_USER:-mainbrain}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      EMBEDDINGS_URL: http://embeddings:8000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BACKEND_SECRET: ${BACKEND_SECRET:-}
+      # Faster than the serving stack's defaults, because a suite waits for both passes to drain
+      # before it asks anything and the fixtures are a few dozen records rather than an archive.
+      INDEXING_SECONDS_BETWEEN_SWEEPS: ${EVAL_INDEXING_SECONDS:-5}
+      RECOGNITION_SECONDS_BETWEEN_SWEEPS: ${EVAL_RECOGNITION_SECONDS:-5}
+      # Wide enough to cover the whole fixture corpus. Inference reads back from now, and a
+      # horizon shorter than the oldest fixture would leave part of the snapshot unrecognised --
+      # which would score the answer path against a derived layer that depends on when it ran.
+      RECOGNITION_HORIZON_DAYS: ${EVAL_RECOGNITION_HORIZON_DAYS:-3650}
+      # **On here, against the default, because the suite cannot finish without it.** Only the
+      # inference half marks messages as recognised; identity marks conversations and persons.
+      # The corpus wait polls for a recognition mark on every fixture message, so with inference
+      # off that count stays at zero, every rebuild spends its whole timeout and then fails -- and
+      # the failure names the embeddings sidecar, which is not what went wrong. Named here rather
+      # than left to `.env`, because Compose passes a service only the variables it lists.
+      RECOGNITION_INFERENCE_ENABLED: ${EVAL_RECOGNITION_INFERENCE_ENABLED:-true}
+      # **What bounds this run is the fixture corpus being finite, and not these numbers.** The
+      # evaluation stack sweeps every few seconds against a few dozen pinned records, so a day is
+      # thousands of sweeps here and a daily allowance guards almost nothing: the reading finishes
+      # because it runs out of corpus, long before it runs out of allowance. These are set low
+      # anyway, as a backstop against a misconfigured run that reads something larger than the
+      # fixtures — not as the thing that makes a run cheap. This is the only paid work the
+      # evaluation stack does.
+      RECOGNITION_INPUT_TOKENS_PER_DAY: ${EVAL_RECOGNITION_INPUT_TOKENS_PER_DAY:-200000}
+      RECOGNITION_OUTPUT_TOKENS_PER_DAY: ${EVAL_RECOGNITION_OUTPUT_TOKENS_PER_DAY:-50000}
+      # Off here as it is everywhere, and deliberately so rather than by omission: the fixture
+      # corpus names every conversation after the body of work it carries, so the pass would judge
+      # each one, reject none, and add its calls to what a scored run costs.
+      ADMISSION_ENABLED: ${EVAL_ADMISSION_ENABLED:-false}
+      # The same zone the serving stack dates its material in, for the same reason the variables
+      # above are listed: Compose passes a service only what it names, and this is the tier that
+      # scores the answers. Left off, it would grade material dated in UTC however the deployment
+      # that the score is meant to describe is set.
+      CORPUS_TIME_ZONE: ${CORPUS_TIME_ZONE:-}
+    ports:
+      # The entry point the evaluation set reads the answer path through, and the reason a port is
+      # published at all. `/answer` on the serving backend stays unreachable from the host.
+      - "127.0.0.1:${EVAL_BACKEND_PORT:-18080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  ingest:
+    build: ./ingest
+    restart: unless-stopped
+    init: true
+    # Long enough for an ordinary stop to stay ordinary. The shutdown sequence stops the sweep,
+    # waits for it, and then closes the session so the client library writes its own store -- which
+    # holds the incremental position this build deliberately keeps no copy of. The platform's
+    # default is ten seconds, and a sequence killed partway through leaves that position unwritten,
+    # which turns every stop into the gap a catch-up then has to find and pay to close. The only
+    # cost of the larger number is how long a deliberate stop waits.
+    stop_grace_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-mainbrain}
+      DATABASE_USER: ${POSTGRES_USER:-mainbrain}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      # Whether to read a source at all. On unless set to false, and the process stays up either
+      # way: this service is restarted unless stopped, so one that exited on a deliberate switch
+      # would sit in a restart loop, and the check that every service is `running` fails on any
+      # other state. Off is for a stack that is not the one ingesting — every deployment pointed
+      # at the same session directory competes for one session, because the client library locks
+      # the directory it is given. Set it for the one deploy rather than in `.env`, which more
+      # than one stack may share. A value that is neither true nor false stops the process.
+      INGEST_ENABLED: ${INGEST_ENABLED:-}
+      # The application identifier, the hash and the number below are all three required, and
+      # required whether or not the switch above is set: the process reads them at startup and
+      # stops, naming the one it wanted. Passed through defaulted-empty rather than demanded
+      # here, because an interpolation this file refuses stops every Compose command for every
+      # service — `ps` included — which would make one unset source credential look like a stack
+      # nobody can read.
+      TELEGRAM_API_ID: ${TELEGRAM_API_ID:-}
+      TELEGRAM_API_HASH: ${TELEGRAM_API_HASH:-}
+      TELEGRAM_PHONE: ${TELEGRAM_PHONE:-}
+      # Optional, each with a default the deployment does not need to state: the conversations
+      # this build does not read, how long to leave between history requests, how far back to
+      # walk at all, and where the client library keeps its own store. A malformed value stops
+      # the process rather than reading as unset — the exclusion above all, because a typo'd
+      # identifier would quietly mean *this chat is no longer excluded*.
+      TELEGRAM_EXCLUDED_CHATS: ${TELEGRAM_EXCLUDED_CHATS:-}
+      # Its inverse: naming conversations reads those and nothing else, which is how a first run
+      # is kept to a handful of them.
+      TELEGRAM_ONLY_CHATS: ${TELEGRAM_ONLY_CHATS:-}
+      TELEGRAM_SECONDS_BETWEEN_PAGES: ${TELEGRAM_SECONDS_BETWEEN_PAGES:-}
+      TELEGRAM_REACH_BACK_TO: ${TELEGRAM_REACH_BACK_TO:-}
+      # Where the session lives *inside* the container, which must agree with the mount below.
+      # Named in both places so the two cannot drift apart.
+      TELEGRAM_SESSION_DIRECTORY: /var/lib/mainbrain/session
+      # No ANTHROPIC_API_KEY. This container holds live session credentials; capture needs no
+      # model access, and putting the key here would put it beside a logged-in account.
+    volumes:
+      # The Telegram client library keeps its own store, and it is not in Postgres — so it is
+      # not in the nightly dump either. A named volume at least survives a rebuild.
+      #
+      # The session inside it is minted once, by hand, on the machine:
+      #
+      #   docker compose run --rm ingest login
+      #
+      # That mode reads the same configuration, asks for the code on the console and exits. The
+      # service never asks and never submits a number — doing so is what makes the platform send
+      # a code, and sign-in attempts are a budget that enough failures exhaust for most of a day.
+      # It waits for the sign-in instead, holding nothing, and starts reading when it lands.
+      #
+      # `TELEGRAM_SESSION_HOST_PATH` is read by Compose and by nothing else. Unset, this is a
+      # volume of this project's own, which means one per worktree and so one sign-in per
+      # worktree. Set to an absolute host path, it is a bind mount every checkout shares, which is
+      # how one sign-in serves all of them. Two rules come with it: keep the path **outside the
+      # repository**, because the production deploy rsyncs the tree and a session file is a
+      # logged-in account; and run one ingest container at a time, because the library locks its
+      # store and two would fight over it.
+      - ${TELEGRAM_SESSION_HOST_PATH:-ingest-session}:/var/lib/mainbrain/session
+
+volumes:
+  postgres-data:
+  ingest-session:
+  # The evaluation corpus. Of this project rather than shared, like the store above and for the
+  # same reason: a branch that changes the fixtures or the schema must not rebuild another
+  # branch's snapshot underneath it.
+  eval-data:
+  # The one volume shared across worktrees, and the one Compose does not own. A fixed name
+  # alone would share it, but it would still belong to whichever project created it: every
+  # later project logs an ownership warning on every deploy, and `docker compose down -v`
+  # from any one worktree — a routine way to reset a dev stack — would delete the cache out
+  # from under all of them. `external` is what buys both. Compose then refuses to create it,
+  # which is why `scripts/deploy.sh` does, before anything is brought up.
+  embeddings-models:
+    external: true
+    name: mainbrain-embeddings-models

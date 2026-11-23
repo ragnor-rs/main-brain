@@ -1,0 +1,31 @@
+-- When a source said a message is gone, which is a fact of its own and not a fourth time axis.
+--
+-- The three axes answer *when did this happen*, *when did we see it* and *when did it change*.
+-- A withdrawal answers none of those: it is the source making a statement about a record it will
+-- not offer again. Folding it into last-seen — the only axis it superficially resembles — makes
+-- the one message explicitly withdrawn look like the freshest in the corpus, and leaves the weak
+-- signal of *unseen for several passes* firing for everything except the case where removal is a
+-- fact. So it gets a column.
+--
+-- Nullable, and null means nothing has been said. Nothing is deleted here, as nowhere else: the
+-- body, the author, every claim and all three axes stay exactly as they were. This is what
+-- retrieval will read to decide whether quoting the message suits the request in front of it —
+-- drafting should not, a question about history should — and no port exposes it yet, because the
+-- shape that reader wants is its own decision.
+--
+-- Only `message`. A removal is reported with content-free identifiers, and the only source in
+-- this build that reports one reports messages; a conversation or a person that vanishes does so
+-- by going quiet, which last-seen already describes. The column arrives where the statement is
+-- actually made rather than everywhere it might one day be.
+--
+-- No index. The read that will want one is retrieval asking for messages that were *not*
+-- withdrawn, which is the common case and poorly served by an index on the rare one; the shape of
+-- that query is not settled yet, and an index guessed at now is a write cost paid for nothing.
+--
+-- Flyway refuses two migrations at one version outright, and refuses a lower one that arrives
+-- after a higher one has been applied, so a number is only safe once it is checked against the
+-- branches in flight rather than against this file's own history. Recognition holds 9, 10 and 11.
+-- Versions 5 to 7 are unused and stay unused: a gap is applied without complaint, but filling one
+-- later is the case Flyway refuses.
+ALTER TABLE message
+    ADD COLUMN withdrawn_at timestamptz;

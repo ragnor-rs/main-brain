@@ -1,0 +1,229 @@
+{
+  "about": [
+    "The evaluation corpus. Invented from nothing, and it has to be: known-good answers are only",
+    "knowable for material somebody wrote, and this repository carries no correspondence.",
+    "Organisations are fictional and people appear as roles, so nothing here names anybody.",
+    "",
+    "Bodies are Russian because the corpus this system reads is Russian, and retrieval over a",
+    "multilingual embedding model is exactly the thing that could regress without anyone noticing.",
+    "An English corpus would score a pipeline rather than this one. Figures and organisation names",
+    "are Latin and numeric on purpose: they are what the answer checks assert on, and a number",
+    "survives any rephrasing the model might reach for.",
+    "",
+    "Native identifiers carry a separator, as a Telegram identifier does. That is what a citation",
+    "has to survive, so the fixtures exercise it rather than using tidy identifiers that cannot",
+    "break anything. `days_ago` and `hours_ago` are resolved against the moment the snapshot was",
+    "seeded, because what comes next has to be ahead of now to be retrievable at all.",
+    "",
+    "**No person label shares a substring with a conversation label**, and that is load-bearing",
+    "rather than tidy. Name search is a substring match ranked by rarity, so a fixture where one",
+    "name reaches both a contact and a conversation would resolve to an ambiguity — and every case",
+    "built on it would score the resolver's threshold instead of the thing it meant to measure.",
+    "",
+    "A message with no author is one of the archive's own. Direction is not recorded anywhere in",
+    "this system, so this is what the corpus can say rather than a gap in the fixture.",
+    "",
+    "**The shared conversations carry two bodies of work, and one of them keeps two threads.** That",
+    "is what lets the set score sectioning: an answer spanning two of them has to separate them,",
+    "and two labels built on one name have to end up under the heading they share rather than under",
+    "one heading each. The two threads of the one body of work talk about the same consignments on",
+    "purpose, so a single question reaches both without naming either.",
+    "",
+    "**A third body of work shares a word with one of those two and carries no messages at all.**",
+    "What it is here for is a name that picks out two pieces of work rather than one: both keep a",
+    "thread for the same kind of work, so a question naming that kind has to come back as a question",
+    "rather than be read as one body of work. Material in it would be retrievable by the cases that",
+    "read by ranking, which name the spans they expect — so an empty thread is what lets a resolution",
+    "case be added without moving a score it has nothing to do with."
+  ],
+  "persons": [
+    { "native_id": "u:4101", "display_name": "Закупки зерна" },
+    { "native_id": "u:4102", "display_name": "Диспетчер перевозок" },
+    { "native_id": "u:4103", "display_name": "Инженер по качеству" },
+    { "native_id": "u:4104", "display_name": "Склад и отгрузка" },
+    { "native_id": "u:4105", "display_name": "Планирование рейсов" },
+    { "native_id": "u:4106", "display_name": "Производственный участок" }
+  ],
+  "conversations": [
+    {
+      "native_id": "-1001:2001",
+      "kind": "DIRECT",
+      "name": "Northwind Foods",
+      "person": "u:4101"
+    },
+    {
+      "native_id": "-1001:2002",
+      "kind": "DIRECT",
+      "name": "Kestrel Logistics",
+      "person": "u:4102"
+    },
+    {
+      "native_id": "-1001:2003",
+      "kind": "GROUP",
+      "name": "Orchard Mills — поставки"
+    },
+    {
+      "native_id": "-1001:2004",
+      "kind": "GROUP",
+      "name": "Harbor Grain — логистика"
+    },
+    {
+      "native_id": "-1001:2005",
+      "kind": "GROUP",
+      "name": "Orchard Mills — упаковка"
+    },
+    {
+      "native_id": "-1001:2006",
+      "kind": "GROUP",
+      "name": "Fenwick Dairy — упаковка"
+    }
+  ],
+  "messages": [
+    {
+      "native_id": "-1001:2001:11",
+      "conversation": "-1001:2001",
+      "author": "u:4101",
+      "days_ago": 12,
+      "body": "Добрый день. Просим обновить предложение на пшеницу: текущая цена 4500 за тонну нас не устраивает."
+    },
+    {
+      "native_id": "-1001:2001:12",
+      "conversation": "-1001:2001",
+      "days_ago": 12,
+      "body": "Добрый день. 4500 за тонну — это цена при партии от 200 тонн. При 500 тоннах готовы обсуждать 4320."
+    },
+    {
+      "native_id": "-1001:2001:13",
+      "conversation": "-1001:2001",
+      "author": "u:4101",
+      "days_ago": 11,
+      "body": "500 тонн для нас много. Давайте остановимся на 300 тоннах и посмотрим, что получится по цене."
+    },
+    {
+      "native_id": "-1001:2001:14",
+      "conversation": "-1001:2001",
+      "days_ago": 11,
+      "body": "На 300 тоннах можем дать 4410 за тонну. Пришлю проект договора до конца недели."
+    },
+    {
+      "native_id": "-1001:2001:15",
+      "conversation": "-1001:2001",
+      "author": "u:4101",
+      "days_ago": 9,
+      "body": "4410 подходит. Ждём проект договора, после этого запустим согласование у себя."
+    },
+    {
+      "native_id": "-1001:2001:16",
+      "conversation": "-1001:2001",
+      "days_ago": 4,
+      "body": "Проект договора готов, отправлю его на почту завтра. Оплата — 30 дней с момента поставки."
+    },
+    {
+      "native_id": "-1001:2002:21",
+      "conversation": "-1001:2002",
+      "author": "u:4102",
+      "days_ago": 8,
+      "body": "По маршруту до склада: ставка 1200 за рейс, при двух рейсах в неделю готовы дать 1140."
+    },
+    {
+      "native_id": "-1001:2002:22",
+      "conversation": "-1001:2002",
+      "days_ago": 8,
+      "body": "Два рейса в неделю нам подходят. Нужно понять, с какой недели вы готовы начать."
+    },
+    {
+      "native_id": "-1001:2002:23",
+      "conversation": "-1001:2002",
+      "author": "u:4102",
+      "days_ago": 6,
+      "body": "Готовы начать со следующего понедельника. Транспортные документы оформим на каждый рейс отдельно."
+    },
+    {
+      "native_id": "-1001:2002:24",
+      "conversation": "-1001:2002",
+      "days_ago": 5,
+      "body": "Хорошо. Пришлите шаблон транспортной накладной, чтобы мы проверили реквизиты заранее."
+    },
+    {
+      "native_id": "-1001:2002:25",
+      "conversation": "-1001:2002",
+      "author": "u:4102",
+      "hours_ago": 30,
+      "body": "Шаблон накладной отправил. Ставка 1140 зафиксирована до конца квартала."
+    },
+    {
+      "native_id": "-1001:2003:31",
+      "conversation": "-1001:2003",
+      "author": "u:4103",
+      "days_ago": 7,
+      "body": "Сертификат соответствия на партию истекает через месяц. Нужно запустить продление."
+    },
+    {
+      "native_id": "-1001:2003:32",
+      "conversation": "-1001:2003",
+      "author": "u:4104",
+      "days_ago": 7,
+      "body": "Продление занимает около трёх недель. Документы на лабораторные испытания подадим на этой неделе."
+    },
+    {
+      "native_id": "-1001:2003:33",
+      "conversation": "-1001:2003",
+      "days_ago": 6,
+      "body": "Учтите, что без сертификата отгрузка остановится. Держите меня в курсе по срокам."
+    },
+    {
+      "native_id": "-1001:2003:34",
+      "conversation": "-1001:2003",
+      "author": "u:4103",
+      "days_ago": 3,
+      "body": "Документы поданы. Лаборатория обещает результаты за 10 рабочих дней."
+    },
+    {
+      "native_id": "-1001:2003:35",
+      "conversation": "-1001:2003",
+      "author": "u:4104",
+      "hours_ago": 20,
+      "body": "Результаты испытаний пришли, всё в норме. Подаём на продление сертификата, номер партии 7734."
+    },
+    {
+      "native_id": "-1001:2004:41",
+      "conversation": "-1001:2004",
+      "author": "u:4105",
+      "days_ago": 6,
+      "body": "По зимним рейсам: тариф 5520 за рейс. При трёх рейсах в неделю пересчитаем в меньшую сторону."
+    },
+    {
+      "native_id": "-1001:2004:42",
+      "conversation": "-1001:2004",
+      "days_ago": 6,
+      "body": "Три рейса в неделю подтверждаем. Нужен график на месяц, иначе планировать склад нечем."
+    },
+    {
+      "native_id": "-1001:2004:43",
+      "conversation": "-1001:2004",
+      "author": "u:4105",
+      "hours_ago": 26,
+      "body": "График на месяц отправлю в пятницу. Тариф 5520 за рейс держим до конца сезона."
+    },
+    {
+      "native_id": "-1001:2005:51",
+      "conversation": "-1001:2005",
+      "author": "u:4106",
+      "days_ago": 5,
+      "body": "По упаковке партии 6180 нужны поддоны с усиленным дном, иначе отгрузка задержится."
+    },
+    {
+      "native_id": "-1001:2005:52",
+      "conversation": "-1001:2005",
+      "days_ago": 4,
+      "body": "Поддоны заказали. Отгрузку партии 6180 планируем на пятницу, если упаковка будет готова."
+    },
+    {
+      "native_id": "-1001:2005:53",
+      "conversation": "-1001:2005",
+      "author": "u:4106",
+      "hours_ago": 18,
+      "body": "Поддоны пришли, партию 6180 упаковали. Отгрузка в пятницу подтверждена."
+    }
+  ]
+}

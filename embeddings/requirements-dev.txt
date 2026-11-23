@@ -1,0 +1,5 @@
+-r requirements.txt
+
+# The test client is a dev dependency, not a runtime one — it must not reach the image.
+httpx==0.28.1
+pytest==9.1.1

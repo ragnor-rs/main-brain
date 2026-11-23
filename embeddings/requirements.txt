@@ -1,0 +1,10 @@
+# Pinned rather than floating. The sidecar exists so that the model is swappable behind one
+# port; that only holds if the service itself is not drifting underneath the decision. Swapping
+# it is not free — the index is declared at one model's dimensions — but it is confined here.
+#
+# The service only. What actually runs a model is in `requirements-model.txt`, kept apart so
+# that the tests — and therefore CI — can install this file and reach no inference stack at
+# all. A single file would make a credential-free, download-free CI job fetch a gigabyte of
+# wheels to assert that two endpoints answer.
+fastapi==0.115.6
+uvicorn==0.34.0

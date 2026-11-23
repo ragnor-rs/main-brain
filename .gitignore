@@ -1,0 +1,54 @@
+# Material the system reads. Nothing under it belongs in a published repository.
+sources/
+
+.DS_Store
+.idea/
+.env
+*.session
+*.session-journal
+__pycache__/
+node_modules/
+
+# Build output.
+build/
+.gradle/
+.kotlin/
+*.class
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# End-to-end credentials. A Telegram session string is a logged-in account, so this file is
+# as sensitive as a session file and is held to the same rule.
+e2e/.env.local
+
+# The evaluation set's own overrides. It reads the repository `.env` for the store password and
+# the model credential, so this file usually holds nothing secret — and is ignored on the same
+# rule anyway, because the one that does hold something is the one nobody wants to find out
+# about afterwards.
+eval/.env.local
+
+# Per-machine Claude Code settings. Shared skills under .claude/skills/ ARE committed.
+.claude/settings.local.json
+
+# Working trees for parallel sessions. A checkout, not content.
+.claude/worktrees/
+
+# The author's own time log and the tooling that builds it. Personal and commercial;
+# neither belongs in a published repository.
+.claude/skills/day-report/
+
+# The toolkit's configuration, and the values it resolves from outside review.
+#
+# The procedure is shared and reviewable; this file is what is left of it here. Its day-log facet
+# is the same tooling the entry above excludes — not only the evidence keys, which the facet below
+# already moves out, but the rounding, the billable exclusions and the audience, every one of them
+# a rule that may not be marked private. So the file is ignored whole while a facet carrying no
+# values of its own cannot be excluded from review, and the second file holds the values that may
+# not be committed under any arrangement.
+.claude/mjolnir.yaml
+.claude/mjolnir.private.yaml
+
+# The role-to-person map the configuration points at. An entry is a name beside a role, which is
+# the one shape the no-names rule bars however it is written.
+.claude/mjolnir.people.yaml

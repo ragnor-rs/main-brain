@@ -1,0 +1,36 @@
+-- Which party a commitment obliges: who is to do the thing, as against who said it would be.
+--
+-- `stated_by` is the author of the message a claim was read out of, and for a commitment that is
+-- frequently not the party who owes it -- an obligation one participant states about another is a
+-- commitment, so a direction derived from the author is confidently wrong in exactly the cases
+-- that matter. Until now the obliged party was in the claim's prose and nowhere a query could
+-- reach, which left owed-by-us and owed-to-us answerable only by reading sentences, and left the
+-- extraction instruction asking for no date at all on the one reading that states one: a deadline
+-- another party owes, mentioned once it had already been missed.
+--
+-- **A column beside the claim rather than a rewrite of it.** The prose stays what a reader sees
+-- and what a citation is checked against; this is the same fact in a form a query can reach. Read
+-- beside `person.self`, it is the material that separates the two directions.
+--
+-- **This is the column `stated_by`'s own comment says is not here.** That comment was written when
+-- it was true and cannot be edited now, an applied migration's checksum covering the whole of its
+-- text, so the current statement lives here: direction is recorded, in this column and in
+-- `person.self`, and `stated_by` stays what can be said about who *stated* the thing.
+--
+-- **Nullable, and null is direction unknown rather than the author's own.** It is empty where the
+-- window could not place the party -- an obligation on somebody who never wrote in the
+-- conversation, or on a participant whose name the label rule withdrew -- and where identity has
+-- not recognised a labelled party yet, exactly as for `stated_by`. Neither is filled in with a
+-- guess. A `NOT NULL DEFAULT` of the author would make every row claim a direction the material
+-- never stated.
+--
+-- No foreign key and no index, as `stated_by` has neither: identity and inference are separate
+-- passes, so a party identity has not reached yet leaves this empty rather than failing a write,
+-- and no read narrows by it. Nothing on the answer path joins it yet either -- the reads project it
+-- onto the finding and no shape renders it -- so what this adds is the material for answering
+-- direction rather than an answer that uses it.
+--
+-- Adding it invalidates no mark: the column is written by the extraction pass, whose own version
+-- moves with the instruction that fills it, so the corpus inside the horizon is re-read for the
+-- prompt and not for the schema.
+ALTER TABLE commitment ADD COLUMN obliged_party uuid;

@@ -1,0 +1,270 @@
+{
+  "about": [
+    "The cases, at least one per shipped request shape. The set grows as a shape lands rather than",
+    "waiting for all of them: `offer` is absent because offer and price reads the knowledge base, the",
+    "knowledge base is corporate Drive, and Drive arrives with a later workstream.",
+    "",
+    "Three things are scored, and they are kept apart on purpose. `retrieval` is whether the right",
+    "material came back, which is a set comparison and deterministic. `citations` is whether every",
+    "claim rests on something retrieved, which is a subset test. `answer` is whether the prose says",
+    "what the corpus supports, which is not deterministic — so it is asserted on figures and",
+    "organisation names rather than on wording, because a number survives any rephrasing and a",
+    "paraphrase check would fail on a better answer.",
+    "",
+    "`shape` is the pipeline the request must bind to, asserted from the trace. Every case states a",
+    "`command`, so binding is direct and spends nothing — which also means nothing here scores the",
+    "classifier. That is deliberate: free text is routed by a model call, and a case asserting which",
+    "shape it chose would be pinning a judgement rather than a behaviour.",
+    "",
+    "**Two cases are about the shape of the reply rather than its content**, because an answer",
+    "spanning several bodies of work that merges them presents one body of work's agreed order as",
+    "though it held for all of them — and every citation under such a heading is sound, so nothing",
+    "deterministic catches it. What they can assert is that material from each body of work reached",
+    "one answer and that the labels appear in the prose; whether the headings nest the way they are",
+    "asked to is read from the answer a run prints, which is the same judgement every `answer` score",
+    "here comes down to.",
+    "",
+    "**A case that asks a question its subject's material does not support** is the only thing that",
+    "can price what refusing an answer with no assertions in it costs. A shape whose answer is its",
+    "cited findings rejects a reply that asserts nothing, and an honest reply about a subject with",
+    "little to say reaches an interface the same way a rejected one does — so whether the rule bites",
+    "on good answers is a judgement, and this is where it is read rather than argued.",
+    "",
+    "**Three cases are about what a name resolves to rather than about what was answered.** A body",
+    "of work kept as a thread per strand of it is several clients and no entity joins them, so the",
+    "three of them are one piece of work, one thread of one, and a word two different pieces of work",
+    "both use. What they assert is the scope: every strand read for the first, the same answer as",
+    "ever for the second, and a question put back to the reader for the third.",
+    "",
+    "`shape` is null for a case whose request settles before any shape runs. It is not an opt-out:",
+    "`test_routing` asserts the converse, that nothing answered, which is the whole of what such a",
+    "case is for.",
+    "",
+    "`scores_retrieval: false`, `scores_citations: false` and `scores_answer: false` say a case's",
+    "retrieved set, its grounding, or its prose, is not graded, and a case that sets one says why",
+    "in its own `note`. Each is",
+    "stated per case rather than left implicit so that a run reports what it did not measure",
+    "instead of reporting a smaller denominator as success — an ungraded dimension scored 1.0",
+    "is an assertion that cannot fail, and it reads in the summary exactly like one that held."
+  ],
+  "cases": [
+    {
+      "id": "status-northwind",
+      "note": "The daily driver, scoped to one conversation. The question names price and volume on purpose: a status answer reports the current state, what is outstanding and what is next, so a bare \"where did we leave off\" leaves it free to report the contract draft and omit the agreed figure — and the answer check would then be asserting a judgement about emphasis rather than whether the right material reached the prose. It is also the single-subject half of sectioning: everything it reads belongs to one body of work, so no other one may appear in the answer. That nothing about the prompt changes in this case is asserted where it can be — over assembly, byte for byte — rather than from out here.",
+      "shape": "status",
+      "command": "status",
+      "subject_name": "Northwind Foods",
+      "text": "Где мы остановились по цене и объёму и что дальше?",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2001:14#0",
+          "MESSAGE/TELEGRAM/-1001:2001:15#0",
+          "MESSAGE/TELEGRAM/-1001:2001:16#0"
+        ],
+        "must_exclude": [
+          "MESSAGE/TELEGRAM/-1001:2002:25#0",
+          "MESSAGE/TELEGRAM/-1001:2003:35#0"
+        ]
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["4410"],
+        "must_not_mention": ["1140", "7734", "Harbor Grain", "Orchard Mills"]
+      }
+    },
+    {
+      "id": "status-unsupported",
+      "note": "A status question about something this subject's material says nothing about: certification belongs to another body of work entirely, and the thread this is scoped to is about rates and waybills. **It is the only case that prices the refusal of an answer that asserts nothing.** The answer this requires is a text outcome, which means the model wrote the absence as a claim line citing what it read, as the format asks: the material holds nothing on certification. A status outcome is a red, and the finding it reports is against the rule rather than against retrieval — the refusal cost an honest answer. Which is not readable from here: several unrelated things settle a request with no prose and the trace carries no fault, so the backend's fault line is what says it was this one. Nothing is required of the prose beyond what it must not contain, because status retrieval does not read the question and the shape is told to say an unsupported part is unsupported rather than filling it in — so requiring it to also report the rate would assert a judgement about emphasis. The exclusions are the half that can fail: the other subject's certification figures must not appear.",
+      "shape": "status",
+      "command": "status",
+      "subject_name": "Kestrel Logistics",
+      "text": "Где мы по сертификации партии и что с продлением?",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2002:23#0",
+          "MESSAGE/TELEGRAM/-1001:2002:25#0"
+        ],
+        "must_exclude": [
+          "MESSAGE/TELEGRAM/-1001:2003:34#0",
+          "MESSAGE/TELEGRAM/-1001:2003:35#0"
+        ]
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": [],
+        "must_not_mention": ["7734", "Orchard Mills"]
+      }
+    },
+    {
+      "id": "status-body-of-work",
+      "note": "A body of work kept as a thread per strand of it, named by the name its strands share. What this case is about is the scope: every strand has to be read, which is why one figure from each thread is required of the prose and the latest span of each is required of the retrieved set. The exclusions are the half that fails in the other direction — a scope widened to the corpus would bring another body of work's figures in. Before the work was a subject of its own, this question was not answered at all: the strands matched as competing clients and the reader was asked which of them they meant, so the outcome asserted here is text rather than a menu.",
+      "shape": "status",
+      "command": "status",
+      "subject_name": "Orchard Mills",
+      "text": "Что сейчас по партиям и что осталось сделать?",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2003:35#0",
+          "MESSAGE/TELEGRAM/-1001:2005:53#0"
+        ],
+        "must_exclude": [
+          "MESSAGE/TELEGRAM/-1001:2004:43#0",
+          "MESSAGE/TELEGRAM/-1001:2001:14#0"
+        ]
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["7734", "6180"],
+        "must_not_mention": ["5520", "Harbor Grain"]
+      }
+    },
+    {
+      "id": "status-single-strand",
+      "note": "The body of work that keeps one thread, which has to answer exactly as it did before any of this: one client, one conversation, and the name resolving to them rather than to a second referent standing for the same subject. It is the control for the case above — the two differ only in how many threads the work is filed under, so a rule that fired on one strand would show up here as the same question answered with a menu or with another body of work's material.",
+      "shape": "status",
+      "command": "status",
+      "subject_name": "Harbor Grain",
+      "text": "Что мы согласовали по тарифу и графику рейсов?",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2004:42#0",
+          "MESSAGE/TELEGRAM/-1001:2004:43#0"
+        ],
+        "must_exclude": [
+          "MESSAGE/TELEGRAM/-1001:2005:53#0",
+          "MESSAGE/TELEGRAM/-1001:2003:35#0"
+        ]
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["5520"],
+        "must_not_mention": ["6180", "Orchard Mills"]
+      }
+    },
+    {
+      "id": "status-two-bodies-one-word",
+      "note": "A name that two different bodies of work both carry a thread for — the kind of work rather than whose it is. Reading them as one piece of work would answer a question about either from both, so this has to come back as a question instead. Which question is the sharp part, and it is the `status_key` rather than the outcome: a client's label is read from a conversation, so each of the four matches shares its label with one other and nothing on offer can be named back — the reply says so rather than printing a menu whose every answer returns it. It is the one case whose request settles in resolution: nothing is retrieved, nothing is generated and nothing is cited, so all three scores are opted out by name and `shape` is null — `test_routing` then asserts the converse, that no shape ran at all. The thread that makes the collision carries no messages, so this case cannot move a score that reads by ranking.",
+      "shape": null,
+      "command": "status",
+      "subject_name": "упаковка",
+      "text": "Где мы по упаковке?",
+      "scores_retrieval": false,
+      "scores_citations": false,
+      "scores_answer": false,
+      "answer": {
+        "outcome": "status",
+        "status_key": "SUBJECT_INDISTINGUISHABLE",
+        "must_mention": [],
+        "must_not_mention": []
+      }
+    },
+    {
+      "id": "draft-dispatcher",
+      "note": "A draft accepts a contact only, so this scores identity reconciliation as well. Nothing is excluded: this shape widens its read across the corpus on purpose, because register is learned across threads rather than within one — so a span from another subject here is the shape working, and an exclusion would score it for a scoping rule it does not have. What a draft must not do is carry the other subject's figures into the prose, which the answer check below asserts instead.",
+      "shape": "draft",
+      "command": "draft",
+      "subject_name": "Диспетчер",
+      "text": "Напиши ответ про шаблон накладной",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2002:24#0",
+          "MESSAGE/TELEGRAM/-1001:2002:25#0"
+        ],
+        "must_exclude": []
+      },
+      "answer": {
+        "outcome": "menu",
+        "must_mention": [],
+        "must_not_mention": ["4410"]
+      }
+    },
+    {
+      "id": "prepare-quality",
+      "note": "Call preparation, on the contact behind the group thread.",
+      "shape": "prepare",
+      "command": "prepare",
+      "subject_name": "Инженер",
+      "text": "Подготовь меня к звонку",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2003:34#0",
+          "MESSAGE/TELEGRAM/-1001:2003:35#0"
+        ],
+        "must_exclude": ["MESSAGE/TELEGRAM/-1001:2002:25#0"]
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["7734"],
+        "must_not_mention": ["4410"]
+      }
+    },
+    {
+      "id": "ask-certificate",
+      "note": "The free-form fallback, bound by command like the others. It retrieves by ranked read rather than by scope, so nothing is excluded: a span from another thread ranking highly is a ranking to judge, not a scoping failure. Routing *into* the fallback is deliberately not what this scores — free text about where something stands is a question the classifier is right to read as a status request, so a case that reached the fallback by classification would be asserting the classifier was wrong.",
+      "shape": "ask",
+      "command": "ask",
+      "text": "Что с сертификатом соответствия и когда будут результаты?",
+      "retrieval": {
+        "must_include": ["MESSAGE/TELEGRAM/-1001:2003:35#0"],
+        "must_exclude": []
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["7734"],
+        "must_not_mention": []
+      }
+    },
+    {
+      "id": "ask-across-bodies-of-work",
+      "note": "A question that spans two bodies of work, which is what the flat answer got wrong: one list merging them presents one body of work's agreed terms as the terms. Asked unscoped on purpose — naming a subject would narrow it to one body of work and there would be nothing to section. Both labels are asserted in the prose because they are what the headings are made of, and both figures because an answer naming a body of work and dropping what was agreed inside it has sectioned nothing.",
+      "shape": "ask",
+      "command": "ask",
+      "text": "Что мы согласовали по тарифам на рейсы и по отгрузке партий?",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2004:43#0",
+          "MESSAGE/TELEGRAM/-1001:2005:53#0"
+        ],
+        "must_exclude": []
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["5520", "6180", "Harbor Grain", "Orchard Mills"],
+        "must_not_mention": []
+      }
+    },
+    {
+      "id": "ask-one-body-of-work-two-threads",
+      "note": "One body of work keeping two threads, which must come back under the heading they share rather than under one heading each. The two labels are built on the same name, which is the whole reason the label travels instead of an identifier: two labels naming one body of work read as one to anybody who sees them, so grouping them needs no merge link and no scored matching. Reached by content rather than by name — the labels are not in the message bodies, and the retrieval here is a ranked read. What is asserted is that both threads reached one answer under the shared name; that it is one heading and not two is read from the answer the run prints.",
+      "shape": "ask",
+      "command": "ask",
+      "text": "Что сейчас с отгрузкой партий и что её задерживает?",
+      "retrieval": {
+        "must_include": [
+          "MESSAGE/TELEGRAM/-1001:2003:33#0",
+          "MESSAGE/TELEGRAM/-1001:2005:53#0"
+        ],
+        "must_exclude": []
+      },
+      "answer": {
+        "outcome": "text",
+        "must_mention": ["6180", "Orchard Mills"],
+        "must_not_mention": []
+      }
+    },
+    {
+      "id": "research-open",
+      "note": "Research answers from material the corpus never held, so a fixed corpus can pin neither what it retrieves nor what figures its prose should carry: both dimensions are ungraded here. What is still worth asserting is that it answers at all, comes back as text, and claims nothing ungrounded — which is what routing, the outcome kind and the citation score cover.",
+      "shape": "research",
+      "command": "research",
+      "text": "Что происходит с ценами на пшеницу в этом сезоне?",
+      "scores_retrieval": false,
+      "scores_answer": false,
+      "answer": {
+        "outcome": "text",
+        "must_mention": [],
+        "must_not_mention": []
+      }
+    }
+  ]
+}
