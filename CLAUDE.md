@@ -110,18 +110,14 @@ writes in.
    got that way. No "previously", "reversed", "decided since", "used to be", no
    note that a section was rewritten or an option abandoned. Change history belongs
    in git, issues and pull requests, which is what they are for.
-5. **No issue numbers in the skills.** `.claude/skills/` describes durable process;
-   an issue number is true for a few days and then misleads. State the condition —
-   "while the repository has no CI" — not the ticket tracking it. Placeholders and
-   invocation examples are fine.
-6. **Never cite private correspondence.** Facts that arrived by private message are
+5. **Never cite private correspondence.** Facts that arrived by private message are
    stated as facts, never attributed to a message, a channel or a timestamp.
-7. **No personal names; no company, client or prospect names.** Use roles and
+6. **No personal names; no company, client or prospect names.** Use roles and
    organisational descriptions. This repository is published.
-8. **Nothing about the author's archive beyond its existence**, and nothing about
+7. **Nothing about the author's archive beyond its existence**, and nothing about
    local tooling or other projects. Its contents, extent and location are not
    recorded here and must not be committed.
-9. **`sources/` is git-ignored and stays that way.** Nothing under it is part of this
+8. **`sources/` is git-ignored and stays that way.** Nothing under it is part of this
    repository.
 
 ## Working style

@@ -200,10 +200,6 @@ absent "no document still calls a later workstream the current build" \
 # absolute shares the sentence. Flattened first, because these files are hard-wrapped and
 # the phrase lands across a line break as often as not — a line-based `absent` reported
 # PASS on the very sentence it forbade, with `stays` and `queued` on two lines.
-#
-# The skills are scanned too, while the repository holds any: a skill asserting this reaches
-# more sessions than a document does — the same reason the staging check above is repo-wide
-# rather than scoped to the documents.
 python3 - <<'PYEOF' || fail=1
 import re, sys, pathlib, glob
 
@@ -214,8 +210,7 @@ PAT = (r'(?:only|never)[^.]{0,70}\bships? code\b'
        r'(?:stays? queued|parks?\b|waits?\b|cannot|can(?:not)? reach|must wait|remains? queued)'
        r'|\bships? code\b[^.]{0,40}only a deploy')
 bad = []
-for f in (["README.md", "CLAUDE.md"] + sorted(glob.glob("docs/*.md"))
-          + sorted(glob.glob(".claude/skills/*/SKILL.md"))):
+for f in ["README.md", "CLAUDE.md"] + sorted(glob.glob("docs/*.md")):
     try:
         text = pathlib.Path(f).read_text(encoding="utf-8")
     except OSError as exc:
@@ -272,7 +267,7 @@ python3 - <<'PYEOF' || fail=1
 import re, sys, pathlib, glob
 
 SCANNED = (["README.md", "CLAUDE.md"] + sorted(glob.glob("docs/*.md"))
-           + sorted(glob.glob(".claude/skills/*/SKILL.md")) + ["scripts/deploy.sh"])
+           + ["scripts/deploy.sh"])
 
 # Quoting, and labelled as such: the sentence that carries the claim, matched over flattened
 # text so the hard wrapping does not decide the outcome. A reword means updating the pattern.
@@ -344,8 +339,8 @@ absent "RetrievalService is gone (one thing called retrieval)" 'RetrievalService
 absent "Task.kt and Deal.kt are gone" 'Task\.kt|Deal\.kt'
 absent "the :core proposal is resolved" ':core'
 absent "no model/ package path survives" '(^|[^a-z])model/ +#'
-# Repo-wide rather than over DOCS: the environment names live in `scripts/deploy.sh`, `e2e/`
-# and the skills too, and a check scoped to the documents reports PASS while the survivors
+# Repo-wide rather than over DOCS: the environment names live in `scripts/deploy.sh` and
+# `e2e/` too, and a check scoped to the documents reports PASS while the survivors
 # sit outside it. Anchored on the deployment vocabulary, because the bare word is also a verb
 # — `git status` before staging. Excludes this file, which has to name what it forbids.
 if grep -rIn -E '(--env +staging|staging +(deploy|environment|host)|deploy(ing|ed)? +to +staging|staging +(or|and) +production|dev,? +staging|STAGING_HOST|three environments)' \
@@ -405,26 +400,20 @@ sys.exit(1 if bad else 0)
 PY
 absent "no path outside this repository" '\.\./\.\./|/Users/|/home/[a-z]'
 
-echo "6. Rule 5 — skills carry no live issue numbers (examples are allowed)"
-if grep -rIn -E '#[0-9]+' .claude/skills --include='*.md' 2>/dev/null \
-     | grep -v -E 'e\.g\.|<number>|<n>' >"$HITS"; then
-  bad "skills reference an issue number outside an example"; sed 's/^/        /' "$HITS"
-else ok "skills reference no live issue number"; fi
-
-echo "7. No document cites a position in a source a reader cannot open"
+echo "6. No document cites a position in a source a reader cannot open"
 # Forbidding, and the stable half of what it forbids is the shape: a bare `(mm:ss)` or
 # `(h:mm:ss)` in parentheses is a position in a recording and nothing else in these
 # documents is written that way. Durations are written out in words, so a correct sentence
 # does not trip it.
 absent "no document carries a transcript position" '\([0-9]{1,2}:[0-9]{2}(:[0-9]{2})?\)'
 
-echo "8. Cross-document links resolve"
+echo "7. Cross-document links resolve"
 grep -rIoh -E '\]\(([a-zA-Z0-9_./-]+\.md)\)' "${DOCS[@]}" | sed -E 's/^\]\(//; s/\)$//' | sort -u | while read -r rel; do
   for base in . docs; do [ -f "$base/$rel" ] && continue 2; done
   echo "        unresolved: $rel"; exit 1
 done && ok "every relative .md link resolves" || bad "a relative .md link does not resolve"
 
-echo "9. Markdown tables are structurally intact"
+echo "8. Markdown tables are structurally intact"
 python3 - <<'PY' || fail=1
 import glob, re, sys
 bad = []
@@ -450,7 +439,7 @@ for b in bad: print("        " + b)
 sys.exit(1 if bad else 0)
 PY
 
-echo "10. Boxed diagrams keep their alignment (a box has a ┌ border; trees do not)"
+echo "9. Boxed diagrams keep their alignment (a box has a ┌ border; trees do not)"
 python3 - <<'PY' || fail=1
 import glob, sys
 bad, checked = [], 0
@@ -476,7 +465,7 @@ for b in bad: print("        " + b)
 sys.exit(1 if bad else 0)
 PY
 
-echo "11. The five request shapes each have a home in the layout"
+echo "10. The five request shapes each have a home in the layout"
 # Computed from both sides, like the file-level check below it, rather than quoting the tree's
 # shape list back at itself. The quoting form named the packages in a string here, which made
 # this a check on wording: it went red when a shape was renamed and, worse, stayed green while
@@ -578,7 +567,7 @@ for b in bad: print("        " + b)
 sys.exit(1 if bad else 0)
 PY
 
-echo "12. Derived layer invariants are stated where they are relied on"
+echo "11. Derived layer invariants are stated where they are relied on"
 # The checks in this group and the next quote a sentence back at the file it came
 # from. They catch a statement being deleted outright and nothing subtler: a red
 # here may mean only that the sentence was reworded. Converting them into computed
@@ -596,7 +585,7 @@ present "citations validated against the retrieved set" docs/architecture.md \
 present "recency reads source time" docs/requirements.md \
         'too old read the \*source'
 
-echo "13. Scope, horizon, layering and provenance properties"
+echo "12. Scope, horizon, layering and provenance properties"
 # 13a. The demo corpus is the workstream's sources and no more, and every document
 # that names it agrees. Anchored on the property — the corpus must match the scope
 # table, not on any particular sentence — so it goes red when a source moves.
@@ -744,7 +733,7 @@ else
   bad "the Egress section no longer says the sidecar fetches its weights as it starts"
 fi
 
-echo "14. Decisions are stated rather than left open"
+echo "13. Decisions are stated rather than left open"
 # 14a. The free-form fallback has a home, and nothing still counts five pipelines.
 absent "no document still claims five fixed pipelines" 'five fixed pipelines'
 present "the fallback has a package" docs/architecture.md 'freeform/'
@@ -874,7 +863,7 @@ present "unmeasured language coverage is admitted" docs/architecture.md \
 absent "Armenian is not a language retrieval must cover" 'Armenian'
 
 
-echo "15. Cross-document agreement"
+echo "14. Cross-document agreement"
 # Every assertion in this group exists because a contradiction shipped past a review
 # that reported green. They are stated as properties for the reason in the header: the
 # versions that missed them were anchored on wording.
@@ -1002,7 +991,7 @@ check("no document calls an interface by a positional ordinal",
 check("no document requires a speech model",
       not re.search(r"(needs?|requires?|depends on) a speech model", ALL, re.I))
 
-# CLAUDE.md rule 7: this repository is published, so no handle identifies anybody in it.
+# CLAUDE.md rule 6: this repository is published, so no handle identifies anybody in it.
 check("no account handle appears in any document",
       not re.search(r"@[A-Za-z][A-Za-z0-9_]{3,}", ALL))
 
@@ -1357,7 +1346,7 @@ else
   done
 fi
 
-echo "16. The schema and the documents agree about the derived passes and the watermark"
+echo "15. The schema and the documents agree about the derived passes and the watermark"
 # Both halves read the schema and hold the prose to it, rather than forbidding the wording a
 # defect happened to use. A pattern keyed on a deleted sentence is the kind this file's header
 # warns about twice over: it cannot fire again, and it does not see the same claim stated in
@@ -1427,7 +1416,7 @@ else
   [ "$found" -eq 0 ] && ok "no document puts the derivation version inside the watermark's key"
 fi
 
-echo "17. Batching is described where it is done, and only where it is done"
+echo "16. Batching is described where it is done, and only where it is done"
 # Computed from the pass rather than keyed on a sentence, which is what makes this the stronger
 # kind: the pass is the thing that decides, so this reads the decision out of it and then requires
 # the architecture to carry it. Bidirectional, because both directions are reachable — a stage that
@@ -1568,7 +1557,7 @@ else
   fi
 fi
 
-echo "18. The predicate vocabulary's width is stated as the extraction stage holds it"
+echo "17. The predicate vocabulary's width is stated as the extraction stage holds it"
 # Computed from the list rather than keyed on a sentence. The extraction stage is where the
 # vocabulary is chosen, so this counts the entries there and holds the architecture to that
 # width — which is the one number an entry is added or withheld against.
@@ -1627,7 +1616,7 @@ else
 fi
 
 echo
-echo "19. The example file and the variables something reads agree, in both directions"
+echo "18. The example file and the variables something reads agree, in both directions"
 # A documented dial that nothing interpolates turns nothing, and the failure is silent in the worst
 # way: the variable is in `.env`, the deployment believes it is set, and the process never sees it.
 # Compose reads `.env` for interpolation only, so a variable `docker-compose.yml` does not name is
@@ -1789,7 +1778,7 @@ sys.exit(1 if bad else 0)
 PYEOF
 
 echo
-echo "20. Every span an evaluation case names is one the corpus fixture holds"
+echo "19. Every span an evaluation case names is one the corpus fixture holds"
 # A case states the material that must come back and the material that must not, as span
 # identifiers written by hand. One naming a record the fixture does not hold cannot be retrieved by
 # anything, so its case can never score full recall — and the red reads as a retrieval regression
@@ -1863,7 +1852,7 @@ print(f"  PASS  all {counted} span(s) named by an evaluation case are held by th
 PYEOF
 
 echo
-echo "21. The evaluation corpus rebuild knows every table the schema declares"
+echo "20. The evaluation corpus rebuild knows every table the schema declares"
 # The rebuild replaces the fixture corpus by truncating a list of tables named in `eval/corpus.py`.
 # A table the schema has gained and that list has not is one the rebuild leaves alone, so the next
 # run scores against whatever a previous fixture put there — and the one before it, since nothing
@@ -1926,7 +1915,7 @@ print(f"  PASS  all {len(declared)} tables the migrations declare are named by t
 PYEOF
 
 echo
-echo "22. The end-to-end harness's example file and the settings it reads agree"
+echo "21. The end-to-end harness's example file and the settings it reads agree"
 # The second credential file, and the one whose absence is quiet. Section 19 compares the root
 # `.env.example` against what Compose and the scripts read; nothing compared this one, and its
 # failure mode is worse than a missing dial. A setting the harness reads and the example omits is
@@ -1985,7 +1974,7 @@ sys.exit(1 if failed else 0)
 PYEOF
 
 echo
-echo "23. Every Compose service runs under an init process"
+echo "22. Every Compose service runs under an init process"
 # Computed over `docker-compose.yml` alone, and one of the few assertions here that gates a
 # deploy rather than a document. A service whose PID 1 is the application does not reap what the
 # application abandons, and a container holding an unreaped child cannot be stopped by signal —
@@ -2053,7 +2042,7 @@ print(f"  PASS  all {len(keys)} Compose services set `init: true`")
 PYEOF
 
 echo
-echo "24. The end-to-end register and the case files on disk agree"
+echo "23. The end-to-end register and the case files on disk agree"
 # Computed in both directions over `e2e/`, because neither direction shows the failure the other
 # does: a case file with no row is coverage nobody recorded, and a row naming a file that is not
 # there is a record of coverage that is gone. ⛔ The reason this is a section rather than a habit
@@ -2117,7 +2106,7 @@ sys.exit(1 if failed else 0)
 PYEOF
 
 echo
-echo "25. The architecture document's listing of scripts/ and the directory agree"
+echo "24. The architecture document's listing of scripts/ and the directory agree"
 # Computed in both directions, for the reason section 24 is: a file with no entry is tooling a
 # reader never learns about, and an entry naming a file that is gone is a record of tooling that
 # is not there. ⛔ A hand-maintained enumeration of a directory is the restated-fact shape this
