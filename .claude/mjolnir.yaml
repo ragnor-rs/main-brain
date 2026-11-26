@@ -416,6 +416,15 @@ test_tiers:
       needs: [deploy, credential, material]
       selects: "the behaviour the change under review alters, as a reader meets it"
 
+command_position:
+  # The shells, so a command handed to one as text is read as the call it is and every guard below
+  # reads it. ⛔ Their plain words are left unread: `bash -n` over a script is the shell gate this
+  # repository runs, and reading the file as a command would refuse the lint on the deploy script.
+  launchers:
+    - { command: "bash", string_flags: ["-c", "-lc"] }
+    - { command: "sh", string_flags: ["-c", "-lc"] }
+    - { command: "zsh", string_flags: ["-c", "-lc"] }
+
 spend_guard:
   # ⛔ No answer given inside a session releases these: both reach a live environment or a metered
   # credential, and the remedy a refusal names is a person running the command themselves.
@@ -447,6 +456,26 @@ spend_guard:
     - command: "zsh"
       args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
       reason: "The deploy, with a shell asked to run it."
+    # A container started by hand rather than by the deploy. ⛔ `docker compose up` is not here: the
+    # stack cap in `exclusive_resources` holds it under a lease, and denying it would leave that cap
+    # nothing to count. Each pattern skips the global options before the subcommand, a flag with or
+    # without its value, so a `-f` or a `--profile` does not move the subcommand off the anchor.
+    - command: "docker"
+      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*(container +)?(run|start|restart)( |$)"
+      reason: >-
+        Starts a container outside the deploy. A second stack contends for the one ingestion
+        session lock and the one stack slot, and its ingest fails on the lock while the stack looks
+        green.
+    - command: "docker"
+      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*compose( +-[^ ]+( +[^- ][^ ]*)?)* +(start|run)( |$)"
+      reason: >-
+        Starts a service outside the deploy, past the lease the stack cap counts. `run` is how a
+        session is minted, and that is a person's step taken once, never a session's.
+    - command: "docker-compose"
+      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*up( |$)"
+      reason: >-
+        A stack brought up through the standalone binary, which the stack cap's lease does not
+        count, so it reaches the session lock with nothing holding the slot.
 
 live_guard:
   # The deploy above reaches another machine through the command it runs, and ⛔ a shell opened on
