@@ -55,15 +55,18 @@ project_is_up() {
   [[ -n $(docker ps --filter "label=com.docker.compose.project=$1" --format '{{.Names}}') ]]
 }
 
-# Bring one project down from the main checkout, whose compose file is the one the tree's own copy
-# was cut from; the project name comes from the containers themselves.
+# Bring one project down, from the tree while it is still there — its compose file is the one the
+# stack was brought up from, and a service only its branch declares is one the main checkout's file
+# does not know — and from the main checkout once the tree is gone. The project name comes from the
+# containers themselves.
 drop() {
-  local project="$1" root="$2" primary_project
+  local project="$1" root="$2" from="$root" primary_project
   primary_project=$(basename "$root" | tr '[:upper:]' '[:lower:]')
   if [[ $project == "$primary_project" ]]; then
     fail "left $project up: it is the main checkout's stack, whose ingest must keep reading. Bringing it down is a person's decision."
   fi
-  ( cd "$root" && docker compose -p "$project" down ) >/dev/null 2>&1
+  [[ -f $MJOLNIR_TREE/docker-compose.yml ]] && from="$MJOLNIR_TREE"
+  ( cd "$from" && docker compose -p "$project" down ) >/dev/null 2>&1
   if project_is_up "$project"; then
     fail "stack $project still has containers up; bring it down with: docker compose -p $project down"
   fi
