@@ -63,7 +63,7 @@ statement of them.
 ## The corpus and its two consumers
 
 ```
-source ports ──▶ CORPUS ──┬──▶ INDEX                  vector over corpus
+source ports ──▶ CORPUS ───┬──▶ INDEX                  vector over corpus
                  records,  │    (the whole corpus)     spans — it has no schema, so
                  source-   │                           nothing can be missing from it
                  faithful  │

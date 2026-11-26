@@ -123,7 +123,7 @@ output.
 
 ```
 /mjolnir:file-work-item → /mjolnir:start N → work → /mjolnir:finish → /mjolnir:review → merge
-                                             └─ /mjolnir:save at the end of a session ─┘
+                                             └─ /mjolnir:save at the end of a session ──┘
 ```
 
 **Starting takes an item named on the invocation, or the next one this board's own order makes
