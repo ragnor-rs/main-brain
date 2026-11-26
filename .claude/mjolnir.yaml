@@ -467,14 +467,15 @@ spend_guard:
         session lock and the one stack slot, and its ingest fails on the lock while the stack looks
         green.
     - command: "docker"
-      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*compose( +-[^ ]+( +[^- ][^ ]*)?)* +(start|run)( |$)"
+      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*compose( +-[^ ]+( +[^- ][^ ]*)?)* +(start|restart|run)( |$)"
       reason: >-
-        Starts a service outside the deploy, past the lease the stack cap counts. `run` is how a
-        session is minted, and that is a person's step taken once, never a session's.
+        Starts a service outside the deploy, past the lease the stack cap counts; a restart starts
+        the stopped ones too. `run` is how a session is minted, and that is a person's step taken
+        once, never a session's.
     - command: "docker-compose"
-      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*up( |$)"
+      args_match: "^(-[^ ]+( +[^- ][^ ]*)? +)*(up|start|restart|run)( |$)"
       reason: >-
-        A stack brought up through the standalone binary, which the stack cap's lease does not
+        A stack started through the standalone binary, which the stack cap's lease does not
         count, so it reaches the session lock with nothing holding the slot.
 
 live_guard:
