@@ -520,7 +520,7 @@ private const val DEFAULT_CHAT_LIST_LIMIT = 5_000
  *
  * Measured rather than guessed: at its default level the deployed container writes two lines
  * every two seconds for the empty poll alone, plus a full dump of every update object — so the
- * one thing the deploy skill says to check, whether a recent pass moved anything, is the thing
+ * one thing the deploy's operating notes say to check, whether a recent pass moved anything, is the thing
  * the log makes impossible to find. At errors only, what remains is what someone would act on.
  *
  * Set once per process, before a client exists, because it is global to the native library.

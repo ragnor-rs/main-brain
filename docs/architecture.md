@@ -2923,6 +2923,7 @@ main-brain/
 ├── scripts/
 │   ├── check-docs.sh                # assertions over the documents; the `docs` CI job
 │   ├── deploy.sh                    # dev · prod; only dev is implemented
+│   ├── deploy-batch.sh              # which merged cards a deploy finishes, by workstream
 │   ├── board-next.sh                # the board items to offer next, most promising first
 │   ├── board-next.py                # the ordering itself
 │   ├── e2e-declare.sh               # how many cases the end-to-end tree holds

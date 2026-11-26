@@ -2,10 +2,9 @@
 #
 # ⛔ EVERY ROLE `carriers:` MAPS IS THE TOOLKIT'S, INVOKED NAMESPACED, and this file is the whole
 # of what they read about this project — the board, the labels, the statuses, the caps, the gates
-# and the guards. The one role that is still the project's own is the deploy, under
-# `.claude/skills/deploy/`, because the toolkit carries none. A facet below that reads as an
-# absence is a statement about what THIS configuration governs, never a claim that the project
-# does not do the thing.
+# and the guards, the deploy targets included. A facet below that reads as an absence is a
+# statement about what THIS configuration governs, never a claim that the project does not do the
+# thing.
 #
 # ⛔ This file is committed and reviewed; the blocks `private.blocks` names are not in it. They are
 # supplied whole from the file `private.source` addresses (§ 28), which `.gitignore` excludes for
@@ -438,10 +437,19 @@ spend_guard:
   # credential, and the remedy a refusal names is a person running the command themselves.
   approval: denied
   deny:
+    # The deploy to anything but dev. ⛔ Dev is the stack a session is the only user of, and the
+    # deploy role runs it freely; every other target, and a call naming no target, is refused.
     - command: "./scripts/deploy.sh"
+      args_match: "^(?!(.* )?--env( +|=)dev( |$))"
       reason: >-
-        Stands up or replaces a running stack, and a production target writes to a real account
-        on the interface. Undoing it is a second deploy.
+        Replaces live containers, and production writes to a real account on the interface.
+        Undoing it is a second deploy.
+    # The evaluation set run by the deploy itself, where the runner entry below never sees it.
+    - command: "./scripts/deploy.sh"
+      args_match: "(^| )--eval( |$)"
+      reason: >-
+        Runs the evaluation set: about four dollars a run against a budget that is finite and has
+        been exhausted once. It is the one tier that is asked for rather than automatic.
     # ⛔ The command alone does not decide here, and stating it alone denied nothing: the match is
     # on the head, so the directory has to be an argument pattern. ⚠️ Narrowed to that directory
     # on purpose — the end-to-end tier spends too, and denying every invocation of this runner
@@ -455,15 +463,17 @@ spend_guard:
     # ⛔ Anchored at the first argument rather than matched anywhere in them: `bash -n` over the
     # same file is the shell gate this repository runs and spends nothing, and a guard that
     # refuses the lint on a script it cannot run is one somebody turns off.
+    # Each shell carries the same two narrowings as the deploy entries above: anything but dev, or
+    # the evaluation set.
     - command: "bash"
-      args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
-      reason: "The deploy, with a shell asked to run it."
+      args_match: "^(\\./)?(scripts/)?deploy\\.sh(?!(.* )?--env( +|=)dev( |$))|^(\\./)?(scripts/)?deploy\\.sh .*--eval( |$)"
+      reason: "The deploy to a target other than dev, or with the evaluation set, with a shell asked to run it."
     - command: "sh"
-      args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
-      reason: "The deploy, with a shell asked to run it."
+      args_match: "^(\\./)?(scripts/)?deploy\\.sh(?!(.* )?--env( +|=)dev( |$))|^(\\./)?(scripts/)?deploy\\.sh .*--eval( |$)"
+      reason: "The deploy to a target other than dev, or with the evaluation set, with a shell asked to run it."
     - command: "zsh"
-      args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
-      reason: "The deploy, with a shell asked to run it."
+      args_match: "^(\\./)?(scripts/)?deploy\\.sh(?!(.* )?--env( +|=)dev( |$))|^(\\./)?(scripts/)?deploy\\.sh .*--eval( |$)"
+      reason: "The deploy to a target other than dev, or with the evaluation set, with a shell asked to run it."
     # A container started by hand rather than by the deploy. ⛔ `docker compose up` is not here: the
     # stack cap in `exclusive_resources` holds it under a lease, and denying it would leave that cap
     # nothing to count. Each pattern skips the global options before the subcommand, a flag with or
@@ -540,21 +550,46 @@ release:
     A version is to be cut through the toolkit.
 
 deploy:
-  # Targets are named so that `refused_on` above resolves. Neither advances a card: the board
-  # sweep is this project's own `/deploy`.
+  # The deploy role runs these, and a stack-wide deploy's advance is the board's `Merged` → `Done`
+  # sweep. What a deploy needs and how the dev stack is operated is `docs/process.md` → The deploy.
   - name: dev
     not_live: true
     invoke: command
-    command: "./scripts/deploy.sh --env dev"
-    advances: none
+    # A full deploy, or one service. ⛔ The evaluation set is not a choice here: `--eval` is denied
+    # to sessions, so it is asked for and run by a person.
+    command: "./scripts/deploy.sh --env dev --{choose:services}"
+    choices:
+      - name: services
+        values: ["all", "postgres", "embeddings", "ingest", "backend", "bot"]
+        default: "all"
+        warnings:
+          postgres: "One service: no suite runs and no card is finished."
+          embeddings: "One service: no suite runs and no card is finished."
+          ingest: "One service: no suite runs and no card is finished."
+          backend: "One service: no suite runs and no card is finished."
+          bot: "One service: no suite runs and no card is finished."
+    # Neither environment ships a commit — the images are built from the working tree — so what is
+    # live is what is merged only from the primary checkout, clean, at the remote tip. Each of the
+    # three holds the sweep and not the deploy: a deploy from a tree or a branch is ordinary work.
+    tree:
+      - { condition: primary_checkout, holds: advance }
+      - { condition: clean, holds: advance }
+      - { condition: at_remote_tip, holds: advance }
+    # The run outlives a tool call: the index pass alone takes minutes on a cold stack.
+    background:
+      log: "build/deploy-dev.log"
+    advances: terminal
+    # Stack-wide only, and only the cards of the workstream this target serves.
+    batch: "./scripts/deploy-batch.sh {deploy:target} {choose:services}"
+    # ⛔ A suite run with the tests that need material deselected, because the index had not caught
+    # up, measured the stack less than it looks: those are the only cases that establish it answers.
+    advance_requires:
+      - tier: end_to_end
     grouping: none
     requires_role: none
     publishes: false
   - name: production
-    not_live: false
-    invoke: command
-    command: "./scripts/deploy.sh --env prod"
-    advances: none
-    grouping: none
-    requires_role: none
-    publishes: false
+    invoke: not_implemented
+    reason: >-
+      The remote path to the office machine is not built: `scripts/deploy.sh` refuses it by name
+      rather than improvise an ssh sequence against a host that holds a live interface session.

@@ -201,9 +201,9 @@ absent "no document still calls a later workstream the current build" \
 # the phrase lands across a line break as often as not — a line-based `absent` reported
 # PASS on the very sentence it forbade, with `stays` and `queued` on two lines.
 #
-# The skills are scanned too. `/deploy` makes this judgement, so a skill asserting it
-# reaches more sessions than a document does — the same reason the staging check above is
-# repo-wide rather than scoped to the documents.
+# The skills are scanned too, while the repository holds any: a skill asserting this reaches
+# more sessions than a document does — the same reason the staging check above is repo-wide
+# rather than scoped to the documents.
 python3 - <<'PYEOF' || fail=1
 import re, sys, pathlib, glob
 
@@ -283,8 +283,6 @@ STATES = [
      r'sweeps the `Merged` cards of the workstream that environment serves'),
     ("docs/process.md", "every issue carries a workstream",
      r'\*\*Every issue carries one\*\*'),
-    (".claude/skills/deploy/SKILL.md", "which target finishes which workstream",
-     r'`--env dev` finishes \*\*Workstream 0\*\* cards'),
     ("scripts/deploy.sh", "which target finishes which workstream",
      r'dev # finishes Workstream 0, which runs on this machine and nowhere else'),
     # No `#` in this one: it is inside the closing `say`, not the header comment block.

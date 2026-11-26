@@ -27,8 +27,9 @@
 # every deploy that has an account, at the highest effort this build asks for.
 # Nothing here touches the board, but a successful stack-wide deploy does finish cards: dev
 # finishes Workstream 0, which runs on this machine and nowhere else, and production finishes
-# the later workstreams, which run on the office machine. The sweep lives in /deploy rather
-# than in this script, and so do the conditions that make it honest.
+# the later workstreams, which run on the office machine. The sweep is the toolkit's deploy
+# role's advance, configured in .claude/mjolnir.yaml, and so are the conditions that make it
+# honest.
 
 set -euo pipefail
 
@@ -484,5 +485,5 @@ else
     deploy from a clean origin/main is what finishes its Merged cards; later workstreams
     run on the office machine and wait for production."
 fi
-say "This script does not touch the board. /deploy sweeps it, and holds the conditions
-    that make the sweep honest."
+say "This script does not touch the board. The toolkit's deploy role sweeps it, and holds
+    the conditions that make the sweep honest."
