@@ -5,20 +5,5 @@
       "Bash(gh pr view:*)",
       "Bash(git ls-remote:*)"
     ]
-  },
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "EnterWorktree",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/hooks/link-local-config.sh\"",
-            "statusMessage": "Linking the toolkit's untracked files into the tree",
-            "timeout": 30
-          }
-        ]
-      }
-    ]
   }
 }

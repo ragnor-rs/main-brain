@@ -347,9 +347,9 @@ An issue is done when all of these hold:
 
 - [ ] Every item in the PR's test plan executed and ticked
 - [ ] `./gradlew detekt test` green — this covers ingestion, and it covers the
-      architecture rules; `ruff check embeddings/ e2e/ eval/ .claude/hooks/ scripts/` and
+      architecture rules; `ruff check embeddings/ e2e/ eval/ scripts/` and
       `pytest embeddings/` green
-- [ ] `shellcheck --severity=warning scripts/*.sh .claude/hooks/*.sh` and `bash -n` green on
+- [ ] `shellcheck --severity=warning scripts/*.sh` and `bash -n` green on
       each of them — a merge gate, so a shell change that skips it is caught in CI rather
       than here. The `*.sh` of both trees gate something: one a deploy, the other every
       Bash call the harness makes. The Python beside them is `ruff`'s, in the line above
@@ -392,7 +392,7 @@ needs the real world runs on the dev stack.
 | Gate | Runs | CI | Dev |
 |---|---|---|---|
 | Compile | the module graph is a compile error; `test` compiles everything | yes | yes |
-| Static analysis | `./gradlew detekt`, `ruff check` over the paths `.github/workflows/ci.yml` names, `shellcheck` over the `*.sh` of `scripts/` and `.claude/hooks/` | yes | yes |
+| Static analysis | `./gradlew detekt`, `ruff check` over the paths `.github/workflows/ci.yml` names, `shellcheck` over the `*.sh` of `scripts/` | yes | yes |
 | Documents | `./scripts/check-docs.sh` — properties the documents must hold | yes | yes |
 | Architecture | `./gradlew test` — the rules a module graph cannot express | yes | yes |
 | Tests | `./gradlew test`, `pytest embeddings/` — store code against real Postgres | yes | yes |

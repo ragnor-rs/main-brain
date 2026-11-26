@@ -80,13 +80,13 @@ jobs:
           pip install -r embeddings/requirements-dev.txt
           pip install -r e2e/requirements.txt
 
-      # The three trees, the hook helper, and the two programs the board and report scripts call.
+      # The three trees and the two programs the board and report scripts call.
       # ⚠️ This list is what decides coverage, and selection is by extension: the Python inside
       # `scripts/check-docs.sh`'s heredocs is under a path named here and is not read, which only
       # moving it to a file would change. Two of the trees are tested here, and the end-to-end one
       # only where it declares that it reaches nothing — see below.
       - name: ruff
-        run: ruff check embeddings/ e2e/ eval/ .claude/hooks/ scripts/
+        run: ruff check embeddings/ e2e/ eval/ scripts/
 
       # **The readers the rendered cases assert through, and nothing that needs the world.** Those
       # cases hold a delivered answer to what the store places on the subject, and an assertion
@@ -140,8 +140,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Committed shell gates a merge, a deploy, and now every Bash call the harness makes —
-      # `scripts/` and `.claude/hooks/`, and nothing was reading any of it.
+      # Committed shell under `scripts/` gates a merge, a deploy, and the facets of the toolkit
+      # the development process runs from, and nothing was reading any of it.
       # **Neither defect found in `deploy.sh` so far would have been caught here** — a
       # silent exit from `shift 2` under `set -e`, and a pinned `sed` range that printed less
       # of the header than it meant to, are both clean to `bash -n` and to `shellcheck` at
@@ -153,7 +153,7 @@ jobs:
       # between its parser and the one that will actually run the script.
       - name: bash -n
         run: |
-          for f in scripts/*.sh .claude/hooks/*.sh; do bash -n "$f"; done
+          for f in scripts/*.sh; do bash -n "$f"; done
 
       # Pinned, like ruff above and for the same reason: the version the runner image happens
       # to carry moves when the image does, and a linter that reddens the build on a day
@@ -171,4 +171,4 @@ jobs:
             "https://github.com/koalaman/shellcheck/releases/download/${SHELLCHECK_VERSION}/shellcheck-${SHELLCHECK_VERSION}.linux.x86_64.tar.xz"
           tar -xJf shellcheck.tar.xz
           "shellcheck-${SHELLCHECK_VERSION}/shellcheck" --version
-          "shellcheck-${SHELLCHECK_VERSION}/shellcheck" --severity=warning scripts/*.sh .claude/hooks/*.sh
+          "shellcheck-${SHELLCHECK_VERSION}/shellcheck" --severity=warning scripts/*.sh

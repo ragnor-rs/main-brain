@@ -8,9 +8,8 @@
 #
 # ⛔ This file is committed and reviewed; the blocks `private.blocks` names are not in it. They are
 # supplied whole from the file `private.source` addresses (§ 28), which `.gitignore` excludes for
-# the reason stated beside it, and they are read at load — so a checkout without that file loads
-# no configuration at all. `.claude/hooks/link-local-config.sh` links it, and the person map
-# beside it, into each working tree a session enters.
+# the reason stated beside it, and they are read at load. A working tree carries neither that file
+# nor the person map beside it, and the toolkit reads both from the main checkout there.
 
 roots:
   code: "."
@@ -31,7 +30,7 @@ host:
         - job: "jvm"
           mirrors: "./gradlew detekt test --no-daemon"
         - job: "python"
-          mirrors: "ruff check embeddings/ e2e/ eval/ .claude/hooks/ scripts/"
+          mirrors: "ruff check embeddings/ e2e/ eval/ scripts/"
         - job: "python"
           mirrors: 'MB_E2E_TARGET=dev pytest e2e/ -v -rs -m "not telegram and not stack and not corpus"'
         - job: "python"
@@ -39,9 +38,9 @@ host:
         - job: "docs"
           mirrors: "./scripts/check-docs.sh"
         - job: "shell"
-          mirrors: 'for f in scripts/*.sh .claude/hooks/*.sh; do bash -n "$f"; done'
+          mirrors: 'for f in scripts/*.sh; do bash -n "$f"; done'
         - job: "shell"
-          mirrors: "shellcheck --severity=warning scripts/*.sh .claude/hooks/*.sh"
+          mirrors: "shellcheck --severity=warning scripts/*.sh"
   # No `runner`: these jobs ask for the host kind's own default and start on it.
   landing:
     method: squash
@@ -243,8 +242,8 @@ language:
 
 private:
   carrier: file
-  # Git-ignored and relative to the skills root, so each working tree resolves its own — one real
-  # file in the primary checkout, linked into every tree.
+  # Git-ignored and relative to the skills root: one real file in the primary checkout, which a
+  # working tree that does not carry it reads from there.
   source: ".claude/mjolnir.private.yaml"
   # No single value is moved out: each block below is supplied whole, and every value that would
   # have been listed sits inside one of them.
