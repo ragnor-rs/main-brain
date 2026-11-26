@@ -85,17 +85,20 @@ step restated here would be a second copy of it. The roles are invoked namespace
 `/deploy` is the one that is this project's own, under `.claude/skills/deploy/`, because the
 toolkit carries none.
 
-⚠️ **Neither the configuration nor the toolkit is committed**, and that is the one thing this
-section cannot make reproducible: the file is git-ignored for the reason `.gitignore` states
-beside it, and the toolkit is installed per machine. So a clone carries the process in this
-document and none of the machinery that holds it, and a session on a machine without both
-holds nothing — which reads exactly like a session where the rules do not apply.
+⚠️ **The configuration is committed and does not load from a clone alone.** It names blocks it
+supplies from an untracked file, for the reason `.gitignore` states beside that file, and reads
+them at load; the toolkit is installed per machine. So a clone carries the process in this
+document and every rule the configuration states, and a session on a machine without the
+toolkit and that file holds none of them — which reads exactly like a session where the rules do
+not apply. A working tree reaches the file through a link from the primary checkout, made when a
+session enters the tree.
 
 **What a rule costs if it is only written down, it is not written down.** The rules that
 protect the shared machine, the spend and the merge are hooks rather than prose, and all but
-one of them are the toolkit's, reading the facets above. The exception is this project's own,
+two of them are the toolkit's, reading the facets above. The exceptions are this project's own,
 wired from a committed `.claude/settings.json`: the stack a merged tree holds, which the
-toolkit's own sweep does not reach because it reaches trees rather than containers.
+toolkit's own sweep does not reach because it reaches trees rather than containers, and the
+untracked files a tree needs before the configuration loads in it.
 
 | Rule | What happens |
 |---|---|
@@ -106,6 +109,7 @@ toolkit's own sweep does not reach because it reaches trees rather than containe
 | A command that spends | refused outright: the deploy, and the evaluation set |
 | After a merge | that tree's stack comes down, containers only — unless it is still up, Docker cannot be reached, or the session is standing in that tree, each of which is reported instead |
 | At every session start | a tree whose branch has landed is reaped, which is the shared sweep and reaches trees rather than containers |
+| Entering a working tree | the toolkit's untracked private file and person map are linked into it from the primary checkout, where it lacks them |
 
 **A place on a cap is held by a lease rather than by a count of what is running**, so a build
 or a stack started outside a guarded call is in neither count, and a lease outliving the call

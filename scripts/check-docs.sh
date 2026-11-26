@@ -1081,10 +1081,10 @@ else:
                    f"ci.yml defines {sorted(jobs)}")
 
 # Only the documents are read here. The third reader of this job set is the toolkit's
-# `host.checks` facet, and while `.claude/mjolnir.yaml` is git-ignored a check in this script
-# cannot reach it: every run of this gate that matters happens where that file is absent, so an
-# assertion over it fails for the environment rather than for the facet. The toolkit ships the
-# reader that holds the two together, and it runs where the facet is readable.
+# `host.checks` facet in `.claude/mjolnir.yaml`. That file is committed, but it loads only with
+# an untracked file CI never has, and the toolkit's reader is what resolves it: an assertion here
+# would be a second reader of the facet. The toolkit ships the reader that holds the two
+# together, and it runs where the configuration loads.
 
 print("  PASS  every document naming the CI jobs agrees with the workflow"
       if not bad else "  FAIL  a document disagrees with the CI workflow")
