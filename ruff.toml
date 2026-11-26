@@ -1,5 +1,5 @@
-# Style for the Python this repository lints — the three trees, the hook helper, and the two
-# programs the board and report scripts call. Kotlin has detekt; this is the same bargain in the
+# Style for the Python this repository lints — the three trees and the two programs the board
+# and report scripts call. Kotlin has detekt; this is the same bargain in the
 # other language, and for the same reason: style is the linter's to own so that review can spend
 # itself on everything else.
 #
@@ -18,7 +18,7 @@ target-version = "py311"
 # these paths are resolved relative to this file, not to wherever ruff is invoked. Without
 # it, import ordering treats a local module as a third-party library and asks for the
 # opposite of the right order.
-src = ["embeddings", "e2e", "eval", "scripts", ".claude/hooks"]
+src = ["embeddings", "e2e", "eval", "scripts"]
 
 exclude = [
     "**/build",

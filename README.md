@@ -92,7 +92,7 @@ Everything hermetic runs in CI; what needs the real world runs locally.
 ```sh
 ./gradlew detekt test        # style, the architecture suite, unit and store tests
 ./scripts/check-docs.sh      # assertions over the documents
-ruff check embeddings/ e2e/ eval/ .claude/hooks/ scripts/
+ruff check embeddings/ e2e/ eval/ scripts/
 pytest embeddings/
 ```
 
