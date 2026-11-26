@@ -286,12 +286,19 @@ branch_model:
   work_in_shared_checkout: when_free
   parallel_trees: true
   tree_dir: ".claude/worktrees"
-  # Teardown only, and the setup half is genuinely empty: a tree here needs nothing installed or
-  # copied into it. ⚠️ The pointer is a hook file because the teardown also has to happen on a
-  # merge nobody ran a role for — the stack a merged tree holds is this project's one exclusive
-  # resource that does not free itself, and the toolkit's own sweep reaches trees rather than
-  # containers.
-  mechanics: ".claude/hooks/drop-merged-stack.sh"
+  # The setup half is genuinely empty: a tree here needs nothing installed or copied into it.
+  mechanics: null
+  # The stack a tree started is this project's one exclusive resource that does not free itself,
+  # so every removal brings it down first and is held while it is still up. ⚠️ An unreachable
+  # Docker daemon holds the removal too: the services restart unless stopped, so a stack the
+  # daemon cannot be asked about may come back after its tree is gone.
+  teardown: "./scripts/stack.sh down"
+  resource_up: "./scripts/stack.sh up"
+  resources_running: "./scripts/stack.sh list"
+  resource_stop: "./scripts/stack.sh stop"
+  # The merge a session makes is a removal too, so a merged tree's stack does not hold the slot
+  # until the next session opens.
+  prune_on_merge: true
   regenerable: []
   # The two caps, with their own ticket lifetimes. ⚠️ `probe` is null for both, so the leases are
   # the whole of the count (§ 10): a build or a stack started outside a guarded call is not in it.

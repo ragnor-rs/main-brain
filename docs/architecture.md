@@ -2927,7 +2927,8 @@ main-brain/
 │   ├── board-next.py                # the ordering itself
 │   ├── e2e-declare.sh               # how many cases the end-to-end tree holds
 │   ├── e2e-report.sh                # what an end-to-end run executed, and what it skipped
-│   └── e2e-report.py                # the translation itself
+│   ├── e2e-report.py                # the translation itself
+│   └── stack.sh                     # a tree's Compose stack, brought down before the tree goes
 │
 ├── contract/                        # the backend's wire DTOs.       depends on no module
 │   └── <src>/contract/
@@ -3341,7 +3342,7 @@ GitHub Actions, no secrets, four jobs:
 | Job | Runs |
 |---|---|
 | `jvm` | `./gradlew detekt test` on Java 21 — which covers the architecture rules too. The runner provides Docker, so Testcontainers works |
-| `python` | `ruff check` over the three Python trees, the hook helper and the two programs the board and report scripts call — the last of these because a program inside a shell script is a string to `shellcheck` and to `bash -n` alike, and only a file is read before it runs. ⚠️ The step's path list is what decides coverage and selection is by extension, so the Python in `scripts/check-docs.sh`'s heredocs sits under a named path unread; `pytest` for `embeddings/`, and for the cases in `e2e/` that carry none of the markers naming something of the world. Neither a model nor the stack that runs one is downloaded: those are a separate requirements file that the image installs and the tests do not, and nothing in the sidecar imports an inference library at module scope |
+| `python` | `ruff check` over the three Python trees and the two programs the board and report scripts call — the last of these because a program inside a shell script is a string to `shellcheck` and to `bash -n` alike, and only a file is read before it runs. ⚠️ The step's path list is what decides coverage and selection is by extension, so the Python in `scripts/check-docs.sh`'s heredocs sits under a named path unread; `pytest` for `embeddings/`, and for the cases in `e2e/` that carry none of the markers naming something of the world. Neither a model nor the stack that runs one is downloaded: those are a separate requirements file that the image installs and the tests do not, and nothing in the sidecar imports an inference library at module scope |
 | `docs` | `./scripts/check-docs.sh` — assertions over the documents. Every one of them is hermetic, so a runner reaches the same verdict a checkout does; an assertion that cannot run reports SKIP rather than claiming a clean pass |
 | `shell` | `bash -n` and `shellcheck --severity=warning` over the `*.sh` of `scripts/` and `.claude/hooks/` — the Python beside them is the `python` job's. That shell is read by something outside this build — a merge, a deploy, every Bash call the harness makes, and the facets of the toolkit the development process runs from — so a break in any of it surfaces where no suite is looking |
 
