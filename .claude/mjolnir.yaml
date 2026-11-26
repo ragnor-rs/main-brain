@@ -286,8 +286,9 @@ branch_model:
   work_in_shared_checkout: when_free
   parallel_trees: true
   tree_dir: ".claude/worktrees"
-  # The setup half is genuinely empty: a tree here needs nothing installed or copied into it.
-  mechanics: null
+  # The setup half: a tree is cut without the git-ignored `.env`, and a deploy from it refuses on
+  # that first, so the main checkout's is linked in. The teardown half is the four keys below.
+  mechanics: "scripts/tree-setup.sh"
   # The stack a tree started is this project's one exclusive resource that does not free itself,
   # so every removal brings it down first and is held while it is still up. ⚠️ An unreachable
   # Docker daemon holds the removal too: the services restart unless stopped, so a stack the

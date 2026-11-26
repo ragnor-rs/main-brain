@@ -35,7 +35,9 @@ deploy = **build the jars → rsync the tree + those jars to the host → `docke
 missing:
 
 - **`.env` in the repository root.** `cp .env.example .env`, then fill it in. Compose will
-  not interpolate the file at all while `POSTGRES_PASSWORD` is unset.
+  not interpolate the file at all while `POSTGRES_PASSWORD` is unset. A working tree holds
+  the main checkout's file as a link, which `scripts/tree-setup.sh` makes when the tree is
+  cut; run it by hand in a tree cut any other way.
 - **The end-to-end client libraries.** `pip install -r e2e/requirements.txt`. Checked before
   anything is built, because the suites run at the end and a missing library is an import
   error rather than the skip the harness is designed around.
