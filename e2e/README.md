@@ -87,8 +87,8 @@ one query; `store.py` is the shape of it.
 
 ## Running
 
-`/deploy --env dev` runs this after bringing the stack up and waiting for the index pass to catch
-up. When it has not caught up, the deploy runs everything here except the tests marked `corpus` —
+A full dev deploy (`./scripts/deploy.sh --env dev`, which the deploy role runs) runs this after
+bringing the stack up and waiting for the index pass to catch up. When it has not caught up, the deploy runs everything here except the tests marked `corpus` —
 the ones that need material to answer from, each of which could then only have failed for want of
 it. By hand:
 

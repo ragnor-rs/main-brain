@@ -81,9 +81,8 @@ which seam it touches. An issue that says only "add search" is not ready.
 `.claude/mjolnir.yaml`** — the board and its columns, the labels carrying type and priority, the
 milestone carrying the workstream, the readiness gate, what this project counts as done, the
 caps, the issue templates and the guards, each stated there once and read rather than copied. A
-step restated here would be a second copy of it. The roles are invoked namespaced, and
-`/deploy` is the one that is this project's own, under `.claude/skills/deploy/`, because the
-toolkit carries none.
+step restated here would be a second copy of it. The roles are invoked namespaced, the deploy
+among them.
 
 ⚠️ **The configuration is committed and does not load from a clone alone.** It names blocks it
 supplies from an untracked file, for the reason `.gitignore` states beside that file, and reads
@@ -139,9 +138,10 @@ argument, and a session that opens on work somebody already started reads where 
 `/mjolnir:save` ends a working session: it brings the board current — including the cards a
 merge already finished — and commits the branch HEAD is on. It never opens or merges a pull
 request and never decides anything; anything that is a judgement call gets reported instead.
-Releasing a merged branch's stack is not among its steps, because the hook does it at the
-merge; what a save owes is to name a stack that is still up and why. `/deploy` is separate,
-and refuses any target whose path is not implemented rather than improvising one.
+Releasing a merged branch's stack is not among its steps, because removing the branch's tree
+brings its stack down first; what a save owes is to name a stack that is still up and why.
+`/mjolnir:deploy` is separate, and refuses any target whose path is not implemented rather
+than improvising one.
 
 The loop runs per checkout, so several working trees can run it at once: each cuts its
 branch from `origin/main` rather than holding `main`, and each names its own scratch
@@ -207,9 +207,9 @@ configuration they read:
 - **Where a finding has more than one reasonable reading, raise it** rather than silently
   picking one.
 
-### `/deploy`
+### The deploy
 
-Two environments: **dev** on the developer's machine and **production** on the office
+`/mjolnir:deploy` runs it, against the targets `.claude/mjolnir.yaml` states. Two environments: **dev** on the developer's machine and **production** on the office
 machine. Only dev is implemented; `scripts/deploy.sh` refuses production by name rather
 than improvising an ssh sequence against a host that holds a live Telegram session. The
 remote path is workstream I, so this build runs on dev throughout, the demonstration
@@ -223,11 +223,13 @@ locally, sync the tree and jars to the host, and `docker compose build && up` th
 the host needs no JDK. Migrations run on backend startup.
 
 **Guardrail: a deploy to production replaces live containers.** Never run
-it without explicit approval for that specific deploy. A dev deploy needs no approval but
-does need capacity: it brings up a stack and builds the jars, both machine-wide, so it
-**queues for a slot** when the caps below are full. A stack-wide one writes `Done` to the shared board, so what it sweeps is bounded
-by the conditions `/deploy` holds — this section's clean-tree requirement among them, and the
-primary-checkout one above — rather than by how often it runs.
+it without explicit approval for that specific deploy; a session is refused it outright, and so
+is a deploy that runs the evaluation set. A dev deploy needs no approval, and a session runs it
+freely, but it does need capacity: it brings up a stack and builds the jars, both machine-wide,
+so it **queues for a slot** when the caps below are full. A stack-wide one writes `Done` to the
+shared board, so what it sweeps is bounded by the conditions the dev target holds — this
+section's clean-tree requirement among them, and the primary-checkout one above — rather than
+by how often it runs.
 
 A successful stack-wide deploy then sweeps the `Merged` cards of the workstream that
 environment serves — dev finishes Workstream 0, production finishes the rest — and
@@ -238,6 +240,83 @@ branch, a dirty tree, or a `main` left behind by a merge nobody has pulled, what
 is not what is merged, and the board would be asserting something untrue. A
 single-service deploy sweeps nothing, and neither does a deploy that left a card's own
 workstream untouched.
+
+#### Operating the dev stack
+
+What follows is what the configuration cannot say: how to read a deploy and what to do with the
+stack it leaves.
+
+- **What a full deploy needs before it builds.** A `.env` in the root it runs from — a tree holds
+  the main checkout's as a link, made by `scripts/tree-setup.sh` when the tree is cut — and the
+  suites' client libraries: `pip install -r e2e/requirements.txt` and the evaluation set's
+  requirements file, into a virtual environment at the main checkout's `.venv`, which the script
+  runs the suites under wherever it exists, or else into whichever `python3` comes first on the
+  path. A deploy is run by a person's shell and by the deploy role alike, and only the first of
+  those is the same path for both. The script checks all of
+  it before building and names the fix. A selective deploy runs no suite and needs neither
+  library.
+- **What is actually up**, which the caps' leases do not say: a lease is held by a call, not by
+  what is running, so the two disagree in both directions. A stack is identified by its
+  `working_dir` label and never by its project name, and a build is the greater of the Gradle
+  client count and the busy daemons, never their sum:
+
+  ```bash
+  docker ps --format '{{.Label "com.docker.compose.project.working_dir"}}\t{{.Label "com.docker.compose.project"}}' | sort -u
+  ps ax -o pid,etime,command | grep "[G]radleWrapperMain"
+  ps ax -o pid,%cpu,command | grep "[G]radleDaemon"
+  ```
+
+  An unmerged tree's stack is another session's live work, and the main checkout's stack holds
+  the archive: neither is a session's to take down, so a deploy waiting on one says so.
+- **One ingestion session per machine.** `TELEGRAM_SESSION_HOST_PATH` is one path while `.env` is
+  one shared file, so whichever `ingest` starts second fails on the session's lock indefinitely
+  while the deploy looks green. `INGEST_ENABLED=false` keeps the lock with the stack that ingests;
+  set it for one deploy, never in `.env`, which every tree reads.
+- **Read a run by its skip lines, not its exit code.** Three things skip when unconfigured, and
+  each names what it wanted: the cases that drive the interface, the cases that ask about a
+  subject, and the whole evaluation set when its store password, shared secret or model
+  credential is absent. An index that has not caught up deselects every case needing material,
+  announced in a `==>` line rather than a skip line, so a run reporting fewer cases measured less
+  than it looks. A stack that is down fails rather than skipping, and a wrong `MB_E2E_TARGET`
+  exits the whole run non-zero. The evaluation set prints three scores and the case count behind
+  each; the numbers, not the colour, are what make one run comparable with the last.
+- **Neither suite runs against production.** The end-to-end suite plants real messages into a
+  real account, and the evaluation set seeds a fixture corpus of its own; `MB_E2E_TARGET` accepts
+  only `dev`.
+- **Healthy is not ready, for the embeddings sidecar.** Its healthcheck is liveness only, because
+  it loads gigabytes of weights at startup and must not be restarted for being slow. Read its
+  readiness instead, and its log if that stays false:
+  `docker compose exec -T embeddings python -c "import urllib.request;print(urllib.request.urlopen('http://localhost:8000/health').read())"`.
+  The backend's health is read from inside its container, since Compose publishes no host port:
+  `docker compose exec -T backend curl -fsS http://localhost:8080/health`.
+- **Ingestion connected is read in its log**, as a recent sync, not from the process being up.
+  Two states read as up, quiet and reading nothing, and the log tells them apart: a deployment
+  switched off by `INGEST_ENABLED`, which says so once at startup, and one waiting for a session
+  to be minted.
+- **Minting a session is a person's step, taken once per machine.** `docker compose run --rm ingest
+  login` reads a code from the console (remotely, `ssh -t`, because a plain `ssh` gives it no
+  terminal), and sessions are refused it. The stack can stay up meanwhile; two `ingest`
+  containers against one session directory cannot. Repeated sign-ins can soft-lock the account for
+  about a day, so the service never initiates one, a session file is never copied between
+  machines, and where the session lives is settled in `.env` before signing in.
+- **A hole behind the front edge is a re-read, with the service stopped.** A corpus that has only
+  fallen behind closes the gap itself on the next start. A page an interrupted pass skipped is
+  `docker compose run --rm ingest reread`, or `… reread <conversation>` for one; it records the
+  request and exits, opening no session. The service is stopped first because the beliefs a
+  re-read clears are the running process's own memory, and started again afterwards, which is what
+  spends the request.
+- **A restarting `ingest` is a missing source credential**, most of the time; its log names the
+  variable.
+- **Volumes persist, and nothing in a deploy removes one.** The store holds years of re-ingested
+  history, which costs days of rate-limited backfill to rebuild. The model weights are one
+  external volume, `mainbrain-embeddings-models`, shared by every tree; removing it costs every
+  tree a cold fetch of several gigabytes. A disk that fills mid-fetch can take the Docker daemon
+  down with every call returning 500, which reads as a broken deploy and is not one: prune images
+  and build cache first.
+- **The remote path, when it is built,** must exclude `.claude/worktrees/` and the toolkit's two
+  untracked files from what it syncs, since rsync reads no `.gitignore`; must create the shared
+  weights volume on the host, where `up` fails without it; and must read the host's address from
+  the environment rather than a default, the machine's address not being stable.
 
 ## Branches, commits, and merges
 
@@ -457,7 +536,7 @@ to distrust a red. The list in the testing table of
 **CI cannot run the two local tiers, so a person has to.** They need a live stack, a real
 Telegram user account and a model credential; CI has none of them, and keeping it that way
 is worth more than the coverage would be. The reviewing pass runs them on the dev stack before
-a merge and `/deploy` runs them again on the next dev deploy, which is what makes the
+a merge and the deploy runs them again on the next dev deploy, which is what makes the
 definition of done checkable rather than aspirational.
 
 **That is a convention, not a rail.** Nothing in the platform stops a merge whose end-to-end
