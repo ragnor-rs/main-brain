@@ -94,11 +94,12 @@ below exists in the repository.
      at once, while an IDE-driven build is a busy daemon with no client at all. Idle daemons
      outnumber live builds and do not count, which is what the CPU floor is for.
 
-     **A merged branch's stack is released for you at the merge**, which is the ordinary way a
-     slot turns over and needs no step here. If one is still up, the hook's message says what
-     it could not do — and a merge the hook never saw, in another session or in the web
-     interface, leaves its stack up with nothing watching for it. An **unmerged** worktree's
-     stack is
+     **A merged branch's stack is released for you when its tree is removed**, which is the
+     ordinary way a slot turns over and needs no step here: the toolkit brings the stack down
+     first, at the merge a session makes and on the sweep each session opens with, and keeps the
+     tree while the stack is still up or Docker cannot be asked. A stack whose tree is already
+     gone is found and stopped on that same sweep. If one is still up, the removal's report says
+     why. An **unmerged** worktree's stack is
      another session's live workload, and the primary checkout's own stack holds the archive:
      neither is yours to take down, so say the deploy is waiting and on what.
    - A second stack is also what the TDLib session lock forbids: `TELEGRAM_SESSION_HOST_PATH`
