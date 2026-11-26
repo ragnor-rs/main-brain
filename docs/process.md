@@ -249,7 +249,10 @@ stack it leaves.
 - **What a full deploy needs before it builds.** A `.env` in the root it runs from — a tree holds
   the main checkout's as a link, made by `scripts/tree-setup.sh` when the tree is cut — and the
   suites' client libraries: `pip install -r e2e/requirements.txt` and the evaluation set's
-  requirements file, into whichever `python3` comes first on the path. The script checks all of
+  requirements file, into a virtual environment at the main checkout's `.venv`, which the script
+  runs the suites under wherever it exists, or else into whichever `python3` comes first on the
+  path. A deploy is run by a person's shell and by the deploy role alike, and only the first of
+  those is the same path for both. The script checks all of
   it before building and names the fix. A selective deploy runs no suite and needs neither
   library.
 - **What is actually up**, which the caps' leases do not say: a lease is held by a call, not by

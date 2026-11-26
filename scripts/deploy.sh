@@ -36,6 +36,13 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO_ROOT"
 
+# The interpreter the suites run under: the main checkout's virtual environment where it has one,
+# shared by every tree, and whatever `python3` is first on the path otherwise. A deploy is run by
+# a person's shell and by the toolkit's deploy role alike, and the two do not share a path.
+MAIN_CHECKOUT="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+PYTHON=python3
+[[ -x $MAIN_CHECKOUT/.venv/bin/python3 ]] && PYTHON="$MAIN_CHECKOUT/.venv/bin/python3"
+
 ENVIRONMENT=""
 SERVICES=()
 JVM_SERVICES=(backend bot ingest)
@@ -191,13 +198,13 @@ fi
 # A selective deploy runs no suite, so demanding the libraries there would refuse work that
 # does not need them.
 if [[ ${#SERVICES[@]} -eq 0 ]]; then
-  python3 -c 'import pytest, telethon' || die "the end-to-end harness needs its client
+  "$PYTHON" -c 'import pytest, telethon' || die "the end-to-end harness needs its client
        libraries, and importing them failed (the error is above). They are not optional on
        a full deploy: the suites are how it knows it worked.
        pip install -r e2e/requirements.txt"
   # The evaluation set's own, checked in the same breath and named separately. It talks to its
   # store over SQL to seed the fixtures, which is a library the other harness does not carry.
-  python3 -c 'import psycopg' || die "the evaluation set needs its store driver, and importing
+  "$PYTHON" -c 'import psycopg' || die "the evaluation set needs its store driver, and importing
        it failed (the error is above). It seeds the fixture corpus over SQL, so without this
        the one gate that detects a retrieval regression cannot run.
        pip install -r eval/requirements.txt"
@@ -435,7 +442,7 @@ print(json.load(urllib.request.urlopen('http://localhost:8000/health'))['version
   # about the deploy rather than the change. `conftest.py` registers the marker and says the same.
   if (( caught_up == 1 )); then
     say "Running the end-to-end suite"
-    MB_E2E_TARGET=dev python3 -m pytest e2e/ -v -rs
+    MB_E2E_TARGET=dev "$PYTHON" -m pytest e2e/ -v -rs
   else
     if (( RECORDS == 0 )); then
       why="the corpus holds no records at all, so nothing has been ingested and no sweep could
@@ -448,7 +455,7 @@ print(json.load(urllib.request.urlopen('http://localhost:8000/health'))['version
     identically to the answer path being broken. The rest of the suite still runs, so a stack that
     came up broken still fails here. Leave the stack up and deploy again once the pass has caught
     up; it reports itself each sweep in \`docker compose logs backend\`."
-    MB_E2E_TARGET=dev python3 -m pytest e2e/ -v -rs -m "not corpus"
+    MB_E2E_TARGET=dev "$PYTHON" -m pytest e2e/ -v -rs -m "not corpus"
   fi
 
   # **The evaluation set is opt-in, and a skip is announced rather than silent.** It is the only
@@ -469,7 +476,7 @@ print(json.load(urllib.request.urlopen('http://localhost:8000/health'))['version
     docker compose --profile eval up -d --build backend-eval
 
     say "Running the evaluation set"
-    MB_E2E_TARGET=dev python3 -m pytest eval/ -v -rs
+    MB_E2E_TARGET=dev "$PYTHON" -m pytest eval/ -v -rs
   else
     say "Evaluation set skipped: it was not asked for. Nothing scored retrieval, grounding or
     the answers in this run, so this deploy says nothing about whether they got worse. Pass
