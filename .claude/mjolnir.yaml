@@ -1,0 +1,522 @@
+# mjolnir configuration for this project.
+#
+# ⛔ EVERY ROLE `carriers:` MAPS IS THE TOOLKIT'S, INVOKED NAMESPACED, and this file is the whole
+# of what they read about this project — the board, the labels, the statuses, the caps, the gates
+# and the guards. The one role that is still the project's own is the deploy, under
+# `.claude/skills/deploy/`, because the toolkit carries none. A facet below that reads as an
+# absence is a statement about what THIS configuration governs, never a claim that the project
+# does not do the thing.
+#
+# ⛔ This file is committed and reviewed; the blocks `private.blocks` names are not in it. They are
+# supplied whole from the file `private.source` addresses (§ 28), which `.gitignore` excludes for
+# the reason stated beside it, and they are read at load — so a checkout without that file loads
+# no configuration at all. `.claude/hooks/link-local-config.sh` links it, and the person map
+# beside it, into each working tree a session enters.
+
+roots:
+  code: "."
+
+host:
+  kind: github
+  repo: "ragnor-rs/main-brain"
+  # One workflow, four jobs sharing one checkout, so the jobs form rather than one `mirrors`
+  # (§ 2 → A workflow whose jobs mirror more than one command). ⚠️ Three members name `python`
+  # and two name `shell`: those jobs each run more than one local command, which the mapping
+  # permits in that direction.
+  checks:
+    - workflow: "CI"
+      triggers:
+        - "pull_request -> *"
+        - "push -> main"
+      jobs:
+        - job: "jvm"
+          mirrors: "./gradlew detekt test --no-daemon"
+        - job: "python"
+          mirrors: "ruff check embeddings/ e2e/ eval/ .claude/hooks/ scripts/"
+        - job: "python"
+          mirrors: 'MB_E2E_TARGET=dev pytest e2e/ -v -rs -m "not telegram and not stack and not corpus"'
+        - job: "python"
+          mirrors: "pytest embeddings/ -v"
+        - job: "docs"
+          mirrors: "./scripts/check-docs.sh"
+        - job: "shell"
+          mirrors: 'for f in scripts/*.sh .claude/hooks/*.sh; do bash -n "$f"; done'
+        - job: "shell"
+          mirrors: "shellcheck --severity=warning scripts/*.sh .claude/hooks/*.sh"
+  # No `runner`: these jobs ask for the host kind's own default and start on it.
+  landing:
+    method: squash
+    delete_branch: host
+  # § 29's port. The runs this project reads are the host's own, so a role lists them, reads how
+  # one concluded and reads its log through the operations rather than through a client it carries.
+  runs:
+    kind: github
+
+tracker:
+  kind: github-projects
+  project:
+    owner: "ragnor-rs"
+    number: 2
+  status_field:
+    name: "Status"
+    # ⛔ By name, never by id. An option id resolved here is an option id written nowhere else —
+    # which is what a role reading this facet buys, and a board that renumbers its options breaks
+    # one read rather than every copy of one.
+    resolve: by_name
+
+work_item:
+  type:
+    # A user-owned repository on this host has no native issue type at all — the field is defined
+    # per organisation — so the type is carried as a label convention.
+    carrier: label
+    label_prefix: "type:"
+    values: [bug, feature, task]
+  type_branch_prefix:
+    # The two the process document requires. A task takes the feature prefix: the repository has
+    # two prefixes and three types, and nothing reads the prefix back for the type.
+    bug: bugfix
+    feature: feature
+    task: feature
+  estimate:
+    carrier: none
+    absent_reason: >-
+      The board holds no estimate field. What this project tracks is readiness and the workstream
+      an item belongs to, and a solo build's velocity figure would be ceremony.
+    revisit_when: >-
+      A second person takes items from this board, or somebody outside the build begins asking
+      when a given item lands.
+  template:
+    carrier: file
+    dir: ".claude/templates"
+    by_type:
+      bug: "bug.md"
+      feature: "feature.md"
+      task: "task.md"
+    sections:
+      outcome: "Outcome"
+      acceptance: "Acceptance check"
+      reproduction: "Steps to reproduce"
+  due_date:
+    carrier: none
+    absent_reason: >-
+      The board holds no date field, and the one date this build has agreed is the demonstration
+      rather than anything an item carries. A field nothing writes reads as a commitment while
+      holding whatever was last typed.
+  priority:
+    # A label here too, for the same reason the type is one, and the vocabulary is one value: an
+    # item is either demonstration-visible or it is not.
+    carrier: label
+    label_prefix: "priority:"
+    values: [top]
+    # ⛔ `orderer`: the tier is set by whoever ordered the work, so a role reads it and reports
+    # the tier it would have suggested rather than writing one.
+    writer: orderer
+  grouping:
+    # § 4.8. This project plans in workstreams, and the host carries them as its own milestones —
+    # a scope statement rather than a time box, which is why the kind is stated and not inferred.
+    carrier: native_milestone
+    kind: milestone
+    # ⛔ `stated` and not `discoverable`: all four workstreams are open at once and the host marks
+    # none of them current, so the grouping arrives on the invocation of the role that needs it.
+    # Guessing would put an item into whichever one was picked, which is the one field whose
+    # wrong value is invisible on the item itself.
+    current: stated
+    # A workstream carries a bar of its own beyond its items — the slice has to work end to end,
+    # and this one's is read by the evaluation set.
+    has_own_acceptance: true
+    # Unfinished work carries into the next workstream rather than closing with this one.
+    closes_items: false
+    # Deciding a workstream is finished is whoever ordered the work, and no role mapped here
+    # performs it.
+    closed_by: orderer
+
+statuses:
+  # The board's four columns. ⚠️ `Merged` and `Done` are both written by the procedure here and
+  # neither by automation: the host's own project automation does not move them reliably, which
+  # is why this project's bookkeeping sweeps the cards a merge left behind.
+  - { name: "Todo",        role: initial,     writer: procedure }
+  - { name: "In Progress", role: in_flight,   writer: procedure }
+  - { name: "Merged",      role: code_landed, writer: procedure }
+  # ⛔ `Done` means nothing further is required for the change to be doing its job, which for a
+  # change serving users is a deploy to the environment its workstream runs on, and for one
+  # serving the build is the integration branch itself. Both moves are the procedure's, and which
+  # of the two applies is a judgement about what a deploy would change rather than a path test.
+  - { name: "Done",        role: terminal,    writer: procedure }
+
+# No reverse edge is ruled here, which is a statement rather than a gap: every writer in
+# `statuses` advances, and a solo build has no batching role that would read an item left in a
+# column its code no longer answers for. The key is required, so leaving it out stops the ports
+# loading.
+reversals: []
+
+readiness:
+  - { check: state_is, roles: [initial],
+      stop: "The item is not in the starting column, so something already took it or nothing put it there." }
+  - { check: no_open_blockers,
+      stop: "An open blocker has to land first — and a blocker stated in prose rather than as an edge reads as ready here." }
+  # The two process labels that mean an item is not takeable. Neither is a defect in the item, so
+  # both stop rather than flag.
+  - { check: label_absent, label: "deferred", on_fail: stop_quietly,
+      stop: "The item is deferred: its workstream is not the one in flight." }
+  - { check: label_absent, label: "needs info", on_fail: stop_quietly,
+      stop: "The item is waiting on an answer somebody has to give before it can be worked." }
+  - { check: claim_free,
+      stop: "A published ref already claims this item, so another session is in it or left a tree behind." }
+
+done:
+  - { check: gate_green, answered_by: procedure,
+      stop: "The host's runs are not green for this commit." }
+  # Reads `checks_local` below: the tiers no workflow mirrors, which on this build is most of
+  # what has to pass.
+  - { check: local, answered_by: procedure,
+      stop: "A tier the host cannot run has not been run here, and a tier that did not run is not one that passed." }
+  # ⛔ The check the procedure cannot answer. A green gate reaches none of the answer path's
+  # behaviour: somebody has to read the rendered reply against what the corpus actually holds.
+  - { check: human_verification, answered_by: human,
+      stop: "Drive the change through the interface and report what the reader saw." }
+  - { check: merged, answered_by: procedure,
+      stop: "The change has not landed." }
+
+checks_local:
+  # ⛔ Neither of these is in `host.checks` above, and neither can be: the gate is
+  # credential-free. This list is why a green gate is the minority of what has to pass here.
+  # ⚠️ Both entries are as far as this facet reaches: what they cost, when a tier is owed and what
+  # a skipped one reports are not stated on the toolkit's surface, so a tier that did not run is
+  # held to by the stop message above rather than by the surface.
+  - command: 'MB_E2E_TARGET=dev pytest e2e/ -v -rs'
+    proves: "the stack came up and the flows run end to end through the real interface"
+    requires:
+      - "a deployed stack"
+      - "a credentialled account for the interface"
+      - "an index pass that has caught up, by its own definition of what it owes"
+  - command: "pytest eval/ -v"
+    proves: "retrieval, grounding and the answers score against a pinned fixture corpus"
+    requires:
+      - "a backend of its own"
+      - "a model credential"
+      - "an explicit ask, because it is the larger spend by far"
+
+already_run:
+  # The guard that refuses a local check the host has already run for this code. ⚠️ Nothing is
+  # exempted: every mirrored command above produces one verdict, and none of them has a
+  # repairing variant that would be refused along with the duplicated verdict.
+  never_guard: []
+  escape: "MB_LOCAL_GATE"
+
+commit:
+  # § 6, one entry per role that commits. Explicit for all three: this project's trees carry an
+  # ignored environment file, the toolkit's two untracked files and build output, and
+  # a blanket stage takes every one of them.
+  staging:
+    session: explicit
+    finish: explicit
+    review: explicit
+  trailer: read_from_history
+
+body_sections: []
+# No section is read out of a change here. The deploy role is the reader this facet is for, and
+# it is the one role still this project's own, so what a card owes at deploy time is
+# stated in the card's own prose and read by a person.
+
+carriers:
+  file: skill
+  start: skill
+  finish: skill
+  review: skill
+  session: skill
+
+session:
+  # The tracker and commit thirds. The memory third is absent below with its reason.
+  parts: [tracker, commit]
+
+memory:
+  carrier: none
+  absent_reason: >-
+    The store this project's sessions keep is the harness's own, outside every tree and outside
+    this repository, so nothing a role could be pointed at addresses it and the harness writes it
+    whether or not a role runs. A carrier here would be a second writer of one store.
+  revisit_when: >-
+    A store of this project's own, inside a tree or addressed by a path a role could be given.
+
+language:
+  work_item: en
+  repo: en
+
+private:
+  carrier: file
+  # Git-ignored and relative to the skills root, so each working tree resolves its own — one real
+  # file in the primary checkout, linked into every tree.
+  source: ".claude/mjolnir.private.yaml"
+  # No single value is moved out: each block below is supplied whole, and every value that would
+  # have been listed sits inside one of them.
+  keys: []
+  # The three places the developer's own time-log tooling is stated. `CLAUDE.md` keeps that
+  # tooling out of this repository, and every key under these blocks is one of its rules.
+  blocks:
+    - block: day_log
+      reason: "The developer's own time-log tooling, which this repository's rules keep out of it."
+    - block: carriers.day_log
+      reason: "Which carrier runs that tooling, and so a statement that it is present."
+    - block: language.artifacts.day_log
+      reason: "The language, register and reader of that tooling's output."
+
+loop_exempt:
+  # § 30. Measured over the last thirty commits on the integration branch: twenty-five name a
+  # change and five do not. Four of the five are prose and process copies, and the fifth is a
+  # prompt literal in Kotlin — which no class below covers, because it is code, and the facet's
+  # whole purpose is that a bypass stays distinguishable from a stated exemption.
+  #
+  # ⛔ The classes are a conjunction: every changed path inside the globs **and** the change one
+  # of the kinds. A guard is deliberately absent from them — a hook or a check edited outside
+  # review is the change this repository least wants exempt.
+  classes:
+    - name: prose
+      paths: ["docs/*", "*.md"]
+      kinds: [documentation, factual_correction]
+    - name: ignore files
+      paths: ["*.gitignore", "*.dockerignore"]
+      kinds: [ignore_file]
+  # Every class above states a kind, so a change whose paths are inside one still needs somebody
+  # to say what the change is, and that somebody is a person.
+  borderline: ask
+  destination: null
+
+branch_model:
+  kind: worktree
+  work_in_shared_checkout: when_free
+  parallel_trees: true
+  tree_dir: ".claude/worktrees"
+  # Teardown only, and the setup half is genuinely empty: a tree here needs nothing installed or
+  # copied into it. ⚠️ The pointer is a hook file because the teardown also has to happen on a
+  # merge nobody ran a role for — the stack a merged tree holds is this project's one exclusive
+  # resource that does not free itself, and the toolkit's own sweep reaches trees rather than
+  # containers.
+  mechanics: ".claude/hooks/drop-merged-stack.sh"
+  regenerable: []
+  # The two caps, with their own ticket lifetimes. ⚠️ `probe` is null for both, so the leases are
+  # the whole of the count (§ 10): a build or a stack started outside a guarded call is not in it.
+  exclusive_resources:
+    - name: "gradle build"
+      cap: 2
+      subject: call
+      claimed_by: "./gradlew"
+      probe: null
+      ttl: 1740
+    - name: "project compose stack"
+      cap: 1
+      subject: tree
+      claimed_by: "docker compose up"
+      probe: null
+      ttl: 120
+
+context:
+  artifacts:
+    # What one role hands the next. ⛔ Outside every tree and uncommitted: a tree is released
+    # when its branch lands, and a teardown takes whatever git does not have.
+    carrier: file
+    dir: "$TMPDIR/main-brain/artifacts"
+    committed: false
+
+ordering:
+  record:
+    carrier: none
+    absent_reason: >-
+      The board holds the order and the command below reads it; no separate record is kept.
+    revisit_when: >-
+      An ordering record is kept beside the board.
+  # The board holds the order, so this is a query against it rather than a rank of its own: the
+  # items in the starting column, demonstration-visible first, one identifier per line.
+  carrier: command
+  # ⛔ The board is named here and nowhere else: the command takes it as an argument rather than
+  # carrying a default, so this file stays the one statement of which board this project plans on.
+  command: "./scripts/board-next.sh ragnor-rs 2"
+
+people:
+  # § 27, and a pointer with a shape rather than the values: the map holds a login and a name,
+  # and `CLAUDE.md` bars both from this repository. The starting role writes an assignee, which
+  # is what makes the map read rather than optional.
+  carrier: file
+  # ⛔ Its own file and not the private layer's: that one is a flat mapping of configuration paths
+  # and refuses a key its list does not name, so a role-to-person map in it would be refused.
+  source: ".claude/mjolnir.people.yaml"
+  # The host's own login, which is what the port returns as the person on an item.
+  key: handle
+
+environment:
+  inherits: [PATH, HOME, TMPDIR]
+
+e2e_register:
+  # The suite and the document that claims to describe it are both in this tree, and the table is
+  # keyed on the case file — which is the grain both comparisons are made at.
+  carrier: file
+  suite: "e2e"
+  cases: "test_*.py"
+  register: "e2e/README.md"
+  heading: "What it covers today"
+  # Where the written-down gaps sit. ⛔ An uncovered change is allowed; an uncovered change
+  # nobody wrote down is not, and this is the heading that makes the difference.
+  exemptions: "What arrives with the rest of the build"
+  # The trees a change is judged over: what the backend emits and what a reader is shown meet
+  # nowhere but in a running stack, and the wire contract between them is the seam that makes a
+  # defect there invisible to every other tier.
+  judged: ["backend", "bot", "contract"]
+
+executed:
+  # ⛔ The tier this is about is the end-to-end one, and the reason is its degradation rather than
+  # its cost: the runner handles an absent dependency by skipping, so the suite exits zero having
+  # executed nothing. The counts are the only evidence it ran at all.
+  carrier: command
+  declares: "./scripts/e2e-declare.sh"
+  reports: "./scripts/e2e-report.sh"
+  # The one floor this facet judges, and the only value it takes. Anything above it would be a
+  # coverage threshold, which is not what this rule is.
+  min: 1
+  requires:
+    - "a deployed stack the suite can drive"
+    - "a credentialled account for the interface"
+    - "an index pass that has caught up, by its own definition of what it owes"
+
+test_tiers:
+  # § 31. The suites that need something before they can run at all — not an inventory of every
+  # check this build has. ⛔ What they are configured against is the one failure they share: each
+  # reports nothing when its precondition is missing, and nothing is read as green.
+  carrier: list
+  tiers:
+    - tier: integration
+      # The store suite talks to a real database over its own protocol, created for the run.
+      needs: [dependency]
+      stood_up_by: run
+      started: automatic
+      selects: "a test class under the store package, discovered by the build"
+      selection_held_by: "the architecture suite, which fails a store type tested nowhere"
+      workflow: "CI"
+    - tier: end_to_end
+      # Driven through the interface a person uses, against a deployed stack. ⚠️ It spends: a
+      # model call per question it puts to the stack.
+      needs: [deploy, credential, material, money]
+      started: automatic
+      selects: "a case declaring no marker naming something of the world, and every case once the index has caught up"
+      selection_held_by: "the reading cases, which fail a case needing the world and declaring no marker"
+      refused_on: ["production"]
+      command: 'MB_E2E_TARGET=dev pytest e2e/ -v -rs'
+    - tier: end_to_end
+      # The same tier and a different suite: graded rather than asserted, and asked for rather
+      # than automatic, because it is by far the larger spend.
+      needs: [deploy, credential, material, money]
+      started: asked
+      selects: "a case in the evaluation set, scored against the pinned fixture corpus"
+      selection_held_by: "the document gate, which fails a case naming a span the fixture does not hold"
+      refused_on: ["production"]
+      command: "pytest eval/ -v"
+    - tier: acceptance
+      # ⛔ No source, because a person answers it: the reader drives the change through the
+      # interface and says what they saw. The `done:` list above carries that check.
+      # ⛔ No `started` either: what starts a person looking is the record the done list keeps,
+      # and a machine value here would be a verdict read for a check only a person can answer.
+      needs: [deploy, credential, material]
+      selects: "the behaviour the change under review alters, as a reader meets it"
+
+spend_guard:
+  # ⛔ No answer given inside a session releases these: both reach a live environment or a metered
+  # credential, and the remedy a refusal names is a person running the command themselves.
+  approval: denied
+  deny:
+    - command: "./scripts/deploy.sh"
+      reason: >-
+        Stands up or replaces a running stack, and a production target writes to a real account
+        on the interface. Undoing it is a second deploy.
+    # ⛔ The command alone does not decide here, and stating it alone denied nothing: the match is
+    # on the head, so the directory has to be an argument pattern. ⚠️ Narrowed to that directory
+    # on purpose — the end-to-end tier spends too, and denying every invocation of this runner
+    # would hold the suite that is meant to run on an ordinary deploy.
+    - command: "pytest"
+      args_match: "(^| )eval/"
+      reason: >-
+        About four dollars a run against a budget that is finite and has been exhausted once. It
+        is the one tier that is asked for rather than automatic.
+    # The deploy reached through an interpreter, which stands in no command position of its own.
+    # ⛔ Anchored at the first argument rather than matched anywhere in them: `bash -n` over the
+    # same file is the shell gate this repository runs and spends nothing, and a guard that
+    # refuses the lint on a script it cannot run is one somebody turns off.
+    - command: "bash"
+      args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
+      reason: "The deploy, with a shell asked to run it."
+    - command: "sh"
+      args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
+      reason: "The deploy, with a shell asked to run it."
+    - command: "zsh"
+      args_match: "^(\\./)?(scripts/)?deploy\\.sh($|\\s)"
+      reason: "The deploy, with a shell asked to run it."
+
+live_guard:
+  # The deploy above reaches another machine through the command it runs, and ⛔ a shell opened on
+  # the same machine reaches it without passing that guard at all. The two are not alternatives.
+  session_tools:
+    - command: "ssh"
+      valued_flags: ["-i", "-p", "-l", "-J", "-o"]
+  # Outside every working tree, and carrying no name: every host the deploy reaches is live, so
+  # nothing is allowlisted and every name the guard sees is held. ⛔ The file is stated rather
+  # than omitted — with none to read, the guard cannot tell "nothing is allowlisted" from
+  # "the list could not be read", and the second is not a state this project is in.
+  allowlist: "$HOME/.config/mjolnir/main-brain.not-live"
+
+context_guard:
+  unbounded: []
+  never_bound: []
+  reread: refuse
+
+billing:
+  carrier: none
+  absent_reason: >-
+    No billing period is assembled through this configuration.
+  revisit_when: >-
+    Hours are to be billed through the toolkit.
+
+documents:
+  carrier: none
+  absent_reason: >-
+    The documents are held by scripts/check-docs.sh, which runs in CI where neither the toolkit
+    nor the untracked file this configuration loads with is present.
+  revisit_when: >-
+    The toolkit can hold them in a gate that carries no plugin and no configuration.
+
+spec_corpus:
+  carrier: none
+  absent_reason: >-
+    No specification corpus is configured for the filing role to read.
+  revisit_when: >-
+    A specification is to govern items filed here.
+
+verify:
+  carrier: none
+  absent_reason: >-
+    No deploy target is configured for the accepting role to judge.
+  revisit_when: >-
+    A deployed item is to be judged through the toolkit.
+
+release:
+  carrier: none
+  absent_reason: >-
+    No file is versioned through the toolkit.
+  revisit_when: >-
+    A version is to be cut through the toolkit.
+
+deploy:
+  # Targets are named so that `refused_on` above resolves. Neither advances a card: the board
+  # sweep is this project's own `/deploy`.
+  - name: dev
+    not_live: true
+    invoke: command
+    command: "./scripts/deploy.sh --env dev"
+    advances: none
+    grouping: none
+    requires_role: none
+    publishes: false
+  - name: production
+    not_live: false
+    invoke: command
+    command: "./scripts/deploy.sh --env prod"
+    advances: none
+    grouping: none
+    requires_role: none
+    publishes: false

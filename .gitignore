@@ -38,15 +38,9 @@ eval/.env.local
 # neither belongs in a published repository.
 .claude/skills/day-report/
 
-# The toolkit's configuration, and the values it resolves from outside review.
-#
-# The procedure is shared and reviewable; this file is what is left of it here. Its day-log facet
-# is the same tooling the entry above excludes — not only the evidence keys, which the facet below
-# already moves out, but the rounding, the billable exclusions and the audience, every one of them
-# a rule that may not be marked private. So the file is ignored whole while a facet carrying no
-# values of its own cannot be excluded from review, and the second file holds the values that may
-# not be committed under any arrangement.
-.claude/mjolnir.yaml
+# The blocks the toolkit's configuration supplies from outside review. `.claude/mjolnir.yaml` is
+# committed and names them; their contents are the same tooling the entry above excludes, so they
+# sit in this file instead.
 .claude/mjolnir.private.yaml
 
 # The role-to-person map the configuration points at. An entry is a name beside a role, which is
