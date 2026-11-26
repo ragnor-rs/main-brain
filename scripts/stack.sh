@@ -60,7 +60,8 @@ project_is_up() {
 # does not know — and from the main checkout once the tree is gone. The project name comes from the
 # containers themselves.
 drop() {
-  local project="$1" root="$2" from="$root" primary_project
+  local project="$1" root="$2"
+  local from="$root" primary_project
   primary_project=$(basename "$root" | tr '[:upper:]' '[:lower:]')
   if [[ $project == "$primary_project" ]]; then
     fail "left $project up: it is the main checkout's stack, whose ingest must keep reading. Bringing it down is a person's decision."
