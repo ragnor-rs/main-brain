@@ -2928,7 +2928,8 @@ main-brain/
 │   ├── e2e-declare.sh               # how many cases the end-to-end tree holds
 │   ├── e2e-report.sh                # what an end-to-end run executed, and what it skipped
 │   ├── e2e-report.py                # the translation itself
-│   └── stack.sh                     # a tree's Compose stack, brought down before the tree goes
+│   ├── stack.sh                     # a tree's Compose stack, brought down before the tree goes
+│   └── tree-setup.sh                # a new tree's setup: the main checkout's .env linked in
 │
 ├── contract/                        # the backend's wire DTOs.       depends on no module
 │   └── <src>/contract/
