@@ -351,8 +351,8 @@ An issue is done when all of these hold:
       `pytest embeddings/` green
 - [ ] `shellcheck --severity=warning scripts/*.sh` and `bash -n` green on
       each of them — a merge gate, so a shell change that skips it is caught in CI rather
-      than here. The `*.sh` of both trees gate something: one a deploy, the other every
-      Bash call the harness makes. The Python beside them is `ruff`'s, in the line above
+      than here. Those scripts gate something: a deploy, a tree's setup, and the teardown
+      before a tree is removed. The Python beside them is `ruff`'s, in the line above
 - [ ] `./scripts/check-docs.sh` green — and read any SKIP line, which is an assertion that
       did not run rather than one that passed
 - [ ] New behaviour covered by a test at the right layer (see the testing table in
