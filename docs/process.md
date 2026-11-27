@@ -20,14 +20,14 @@ goes stale the moment work starts.
 | Board | [Main Brain](https://github.com/users/ragnor-rs/projects/2) — Kanban: `Todo → In Progress → Merged → Done` |
 | Labels | Component: `ingest`, `backend`, `bot`, `embeddings`, `postgres`, `infra`, `docs` — one per container, plus the two that are not containers. Process: `needs info`, `deferred`, `priority:top` |
 | Types | `Task`, `Bug`, `Feature` |
-| Workstream | A GitHub **milestone** mirroring the scope table in [`decisions.md`](decisions.md): `Workstream 0`, `Workstream I`, `Workstream II`, `Workstream III`. A workstream is not a label — **exactly one applies**, and the platform enforces the ceiling. **Every issue carries one**, work that serves the build included: a skill, a CI workflow, the module graph or this document carries the workstream whose process it serves — the one in flight for work on the current build, and a later one for that workstream's own machinery, as the remote deploy path is. The field answers two questions: which increment an issue belongs to, and — for a card that waits on a deploy — which deploy finishes it, since the sweep selects on it and a card without one is finished by no deploy at all. Because process work is counted beside increment work, the progress bar says how much of a workstream's own backlog is left rather than how close the increment is to being shown |
+| Workstream | A GitHub **milestone** mirroring the scope table in [`decisions.md`](decisions.md): `Workstream 0`, `Workstream I`, `Workstream II`, `Workstream III`. A workstream is not a label — **exactly one applies**, and the platform enforces the ceiling. **Every issue carries one**, work that serves the build included: a CI workflow, the module graph or this document carries the workstream whose process it serves — the one in flight for work on the current build, and a later one for that workstream's own machinery, as the remote deploy path is. The field answers two questions: which increment an issue belongs to, and — for a card that waits on a deploy — which deploy finishes it, since the sweep selects on it and a card without one is finished by no deploy at all. Because process work is counted beside increment work, the progress bar says how much of a workstream's own backlog is left rather than how close the increment is to being shown |
 
 **`Done` means nothing further is required for the change to be doing its job.**
 
 **The test is what the change is for, not which files it touches.** A change that
 serves users is doing its job once it is running where its workstream runs, so its card
 waits in `Merged` until a deploy to that environment. A change that serves the build —
-documentation, a skill, a CI workflow, the module graph, an architecture rule, a deploy
+documentation, a CI workflow, the module graph, an architecture rule, a deploy
 script — is doing its job the moment it is on `main`, because that is where CI and the
 issue loop read it from. Its card belongs in `Done`, and the bookkeeping pass is what puts it
 there.
