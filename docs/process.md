@@ -102,7 +102,7 @@ project knows — the Compose stack a tree started — the facet names a project
 |---|---|
 | At most two Gradle builds | the call is **refused** while every place is held; what unblocks it is a place coming back — a holder finishing, or its lease expiring |
 | At most one project Compose stack | same cap, same refusal |
-| A merge of any pull request | refused until the change itself carries a recorded answer to whether a person is going to read the diff |
+| A merge of any pull request | refused until the change itself carries a recorded approval of the merge, given in answer to the ask put immediately before it |
 | A gate CI has already run green on this commit | declined locally, in its canonical form only, with `MB_LOCAL_GATE` as the one escape |
 | A command that spends | refused outright: the deploy, and the evaluation set |
 | After a merge | that tree's stack comes down before the tree is removed, containers only and never the main checkout's; a stack still up, or a Docker daemon that cannot be reached, keeps the tree and is reported |
