@@ -28,19 +28,15 @@ e2e/.env.local
 # about afterwards.
 eval/.env.local
 
-# Per-machine Claude Code settings. Shared skills under .claude/skills/ ARE committed.
+# Per-machine Claude Code settings. The shared .claude/settings.json is committed.
 .claude/settings.local.json
 
 # Working trees for parallel sessions. A checkout, not content.
 .claude/worktrees/
 
-# The author's own time log and the tooling that builds it. Personal and commercial;
-# neither belongs in a published repository.
-.claude/skills/day-report/
-
 # The blocks the toolkit's configuration supplies from outside review. `.claude/mjolnir.yaml` is
-# committed and names them; their contents are the same tooling the entry above excludes, so they
-# sit in this file instead.
+# committed and names them; their contents are the author's own time log and the tooling that
+# builds it, personal and commercial, which do not belong in a published repository.
 .claude/mjolnir.private.yaml
 
 # The role-to-person map the configuration points at. An entry is a name beside a role, which is

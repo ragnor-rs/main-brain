@@ -219,8 +219,7 @@ commit:
 
 body_sections: []
 # No section is read out of a change here. The deploy role is the reader this facet is for, and
-# it is the one role still this project's own, so what a card owes at deploy time is
-# stated in the card's own prose and read by a person.
+# what a card owes at deploy time is stated in the card's own prose and read by a person.
 
 carriers:
   file: skill
