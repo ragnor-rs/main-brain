@@ -393,7 +393,7 @@ needs the real world runs on the dev stack.
 |---|---|---|---|
 | Compile | the module graph is a compile error; `test` compiles everything | yes | yes |
 | Static analysis | `./gradlew detekt`, `ruff check` over the paths `.github/workflows/ci.yml` names, `shellcheck` over the `*.sh` of `scripts/` | yes | yes |
-| Documents | `./scripts/check-docs.sh` — properties the documents must hold | yes | yes |
+| Documents | `./scripts/check-docs.sh` and `python3 .mjolnir/documents.py` — properties the documents must hold | yes | yes |
 | Architecture | `./gradlew test` — the rules a module graph cannot express | yes | yes |
 | Tests | `./gradlew test`, `pytest embeddings/` — store code against real Postgres | yes | yes |
 | End-to-end | `pytest e2e/` — a real Telegram account against a running stack; the cases declaring no marker need neither and run in CI too | partly | yes |
@@ -499,8 +499,12 @@ them is about timing. A deselected test says nothing about the build in either d
 **The documents have a gate.** They are most of what this repository ships and the
 first thing a second developer reads, so a contradiction between two of them is a defect
 like any other — one saying the default locale is one language while the other says it is
-another is not a wording problem. `scripts/check-docs.sh` holds the assertions and the
-`docs` CI job runs it.
+another is not a wording problem. Two things hold them. The toolkit's documents facet —
+`documents` in `.claude/mjolnir.yaml` — states the governed set, which document may name
+which, the names no document may carry, and that links resolve, tables keep their shape and
+box diagrams their edges; the toolkit's install renders it into `.mjolnir/documents.py`, run
+by its own workflow. `scripts/check-docs.sh` holds what is about this project's own subject
+matter, and the `docs` CI job runs it.
 
 Not all of them are equally strong, and the file says which is which. **Computed** checks
 derive the property and cannot be fooled by a reword. **Forbidding** checks assert a name

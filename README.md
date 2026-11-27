@@ -90,8 +90,9 @@ than a failure.
 Everything hermetic runs in CI; what needs the real world runs locally.
 
 ```sh
-./gradlew detekt test        # style, the architecture suite, unit and store tests
-./scripts/check-docs.sh      # assertions over the documents
+./gradlew detekt test          # style, the architecture suite, unit and store tests
+./scripts/check-docs.sh        # assertions over the documents' subject matter
+python3 .mjolnir/documents.py  # their links, tables, diagrams and forbidden names
 ruff check embeddings/ e2e/ eval/ scripts/
 pytest embeddings/
 ```

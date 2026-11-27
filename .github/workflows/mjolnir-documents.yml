@@ -1,0 +1,27 @@
+# mjolnir-generated: documents-gate
+# edits here are overwritten; remove it with install.py remove
+name: Governed documents
+
+# Holds this repository's governed documents to the facet its configuration
+# states. The facet is rendered into the checker this runs; nothing about it
+# is written in this file.
+
+on:
+  pull_request:
+
+# Read access to the repository's contents, which the checkout needs, and
+# nothing more: the checker asks the host for nothing else.
+permissions:
+  contents: read
+
+jobs:
+  governed-documents:
+    name: Governed documents
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: 'Hold every governed document to its row, its edges and its own blocks'
+        run: python3 .mjolnir/documents.py
