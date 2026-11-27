@@ -1826,7 +1826,7 @@ echo "15. The end-to-end harness's example file and the settings it reads agree"
 # discoverable only by reading the config module, and the cases needing it skip — which a deploy
 # reports as a skip line rather than a failure, so the tier reads as having run.
 #
-# Both directions, like section 19, and for the same reason: one of them alone would let a name
+# Both directions, like section 13, and for the same reason: one of them alone would let a name
 # rot in whichever file the other does not read.
 #
 # Keyed on the shared prefix rather than on a list of names, so a setting added later is covered
@@ -2011,7 +2011,7 @@ PYEOF
 
 echo
 echo "18. The architecture document's listing of scripts/ and the directory agree"
-# Computed in both directions, for the reason section 24 is: a file with no entry is tooling a
+# Computed in both directions, for the reason section 18 is: a file with no entry is tooling a
 # reader never learns about, and an entry naming a file that is gone is a record of tooling that
 # is not there. ⛔ A hand-maintained enumeration of a directory is the restated-fact shape this
 # repository keeps finding, and the remedy for an enumeration worth keeping is a check rather than

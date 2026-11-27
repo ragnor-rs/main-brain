@@ -55,7 +55,7 @@ Five things are easy to get wrong and worth stating here:
 - **Everything hermetic runs in CI; what needs the real world runs locally.** Style,
   architecture, unit and store tests gate a merge, and so does `scripts/check-docs.sh`,
   which asserts what must be true of the documents, beside the toolkit's documents gate,
-  which holds their links, tables, diagrams and forbidden names. Its computed checks are the stronger
+  which holds their links, tables, diagrams and forbidden names. The script's computed checks are the stronger
   kind, but one keyed on a list of literal names — a source, a service — sees only the
   wordings that list enumerates; the ones that quote a sentence back at a file are weaker
   still, in both directions, so a red there is as likely to mean a rewording as a defect. The end-to-end suite and the evaluation
