@@ -89,15 +89,14 @@ supplies from an untracked file, for the reason `.gitignore` states beside that 
 them at load; the toolkit is installed per machine. So a clone carries the process in this
 document and every rule the configuration states, and a session on a machine without the
 toolkit and that file holds none of them — which reads exactly like a session where the rules do
-not apply. A working tree reaches the file through a link from the primary checkout, made when a
-session enters the tree.
+not apply. A working tree carries no copy of that file; the toolkit reads it, and the person
+map beside it, from the primary checkout.
 
 **What a rule costs if it is only written down, it is not written down.** The rules that
-protect the shared machine, the spend and the merge are hooks rather than prose, and all but
-two of them are the toolkit's, reading the facets above. The exceptions are this project's own,
-wired from a committed `.claude/settings.json`: the stack a merged tree holds, which the
-toolkit's own sweep does not reach because it reaches trees rather than containers, and the
-untracked files a tree needs before the configuration loads in it.
+protect the shared machine, the spend and the merge are hooks rather than prose, and every one
+of them is the toolkit's, reading the facets above. Where a rule acts on something only this
+project knows — the Compose stack a tree started — the facet names a project script,
+`scripts/stack.sh`, and the toolkit runs it.
 
 | Rule | What happens |
 |---|---|
@@ -106,9 +105,9 @@ untracked files a tree needs before the configuration loads in it.
 | A merge of any pull request | refused until the change itself carries a recorded answer to whether a person is going to read the diff |
 | A gate CI has already run green on this commit | declined locally, in its canonical form only, with `MB_LOCAL_GATE` as the one escape |
 | A command that spends | refused outright: the deploy, and the evaluation set |
-| After a merge | that tree's stack comes down, containers only — unless it is still up, Docker cannot be reached, or the session is standing in that tree, each of which is reported instead |
-| At every session start | a tree whose branch has landed is reaped, which is the shared sweep and reaches trees rather than containers |
-| Entering a working tree | the toolkit's untracked private file and person map are linked into it from the primary checkout, where it lacks them |
+| After a merge | that tree's stack comes down before the tree is removed, containers only and never the main checkout's; a stack still up, or a Docker daemon that cannot be reached, keeps the tree and is reported |
+| At every session start | a tree whose branch has landed is reaped the same way, and a stack whose tree is gone is brought down |
+| Entering a working tree | the toolkit reads its untracked private file and person map from the primary checkout, where the tree carries neither |
 
 **A place on a cap is held by a lease rather than by a count of what is running**, so a build
 or a stack started outside a guarded call is in neither count, and a lease outliving the call

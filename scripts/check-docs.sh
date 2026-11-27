@@ -1064,9 +1064,8 @@ PYEOF
 
 # Forbidding, and sound because the fact is settled: `docker-compose.yml` has never set a
 # project name, so Compose derives one per directory and parallel checkouts get their own
-# containers, networks and database. A skill claimed the opposite from the day both were
-# written. The one volume they do share is named rather than the project, which is what the
-# assertion below covers and why this one is still true as written.
+# containers, networks and database. The one volume they do share is named rather than the
+# project, which is what the assertion below covers and why this one is still true as written.
 if grep -rIn -E 'Compose project is named|compose project is named|project name is (set|pinned)' \
      . --exclude=check-docs.sh --exclude-dir=.git --exclude-dir=worktrees \
      --exclude-dir=build --exclude-dir=.gradle --exclude-dir=.venv \
