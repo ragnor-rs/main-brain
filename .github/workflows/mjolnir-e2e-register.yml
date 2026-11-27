@@ -1,0 +1,28 @@
+# mjolnir-generated: e2e_register-gate
+# edits here are overwritten; remove it with install.py remove
+name: End-to-end coverage recorded
+
+# Holds this repository's end-to-end register to its suite, and this change to
+# both. The facet is rendered into the checker this runs; nothing about it is
+# written in this file.
+
+on:
+  pull_request:
+
+# Read access to the repository's contents, which the checkout needs, and
+# nothing more: the checker asks the host for nothing else.
+permissions:
+  contents: read
+
+jobs:
+  end-to-end-coverage-recorded:
+    name: End-to-end coverage recorded
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: 'Hold the register to the suite, and this change to both'
+        run: python3 .mjolnir/check_e2e_register.py

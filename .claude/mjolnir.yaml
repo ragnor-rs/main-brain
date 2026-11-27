@@ -41,6 +41,12 @@ host:
           mirrors: 'for f in scripts/*.sh; do bash -n "$f"; done'
         - job: "shell"
           mirrors: "shellcheck --severity=warning scripts/*.sh"
+    - workflow: Governed documents
+      mirrors: python3 .mjolnir/documents.py
+      triggers: pull_request -> *
+    - workflow: End-to-end coverage recorded
+      mirrors: python3 .mjolnir/check_e2e_register.py
+      triggers: pull_request -> *
   # No `runner`: these jobs ask for the host kind's own default and start on it.
   landing:
     method: squash
@@ -520,12 +526,78 @@ billing:
     Hours are to be billed through the toolkit.
 
 documents:
-  carrier: none
-  absent_reason: >-
-    The documents are held by scripts/check-docs.sh, which runs in CI where neither the toolkit
-    nor the untracked file this configuration loads with is present.
-  revisit_when: >-
-    The toolkit can hold them in a gate that carries no plugin and no configuration.
+  carrier: list
+  files: ["README.md", "CLAUDE.md", "docs/*.md"]
+  entry_points: ["README.md", "CLAUDE.md"]
+  graph:
+    - document: "README.md"
+      may_name: ["docs/architecture.md", "docs/decisions.md", "docs/process.md", "docs/requirements.md"]
+      derived_from: []
+    - document: "CLAUDE.md"
+      may_name: ["README.md", "docs/architecture.md", "docs/process.md", "docs/requirements.md"]
+      derived_from: []
+    - document: "docs/architecture.md"
+      may_name: ["README.md", "docs/decisions.md", "docs/process.md", "docs/requirements.md"]
+      derived_from: []
+    - document: "docs/decisions.md"
+      may_name: ["docs/architecture.md", "docs/process.md", "docs/requirements.md"]
+      derived_from: []
+    - document: "docs/process.md"
+      may_name: ["docs/architecture.md", "docs/decisions.md"]
+      derived_from: []
+    - document: "docs/requirements.md"
+      may_name: ["docs/architecture.md", "docs/decisions.md"]
+      derived_from: []
+  forbidden:
+    - pattern: "SourceIngestor"
+      reason: "A component split into the stream and re-read ports is named as if it survived."
+      stable_because: "A deleted type name; nothing reintroduces it without a code change."
+    - pattern: "SourceReset"
+      reason: "A re-read is described as discarding what it reads."
+      stable_because: "A deleted type name."
+    - pattern: "reset port"
+      reason: "The re-read port is called by the name of the type it replaced."
+      stable_because: "The prose spelling of that deleted type, which the type name alone does not catch."
+    - pattern: "AppContainer"
+      reason: "A shared container is described where each process has one root."
+      stable_because: "A deleted type name."
+    - pattern: "PipelineStage"
+      reason: "The stage type is named by its old name."
+      stable_because: "A deleted type name."
+    - pattern: "RetrievalService"
+      reason: "A second thing called retrieval is described."
+      stable_because: "A deleted type name."
+    - pattern: 'Task\.kt|Deal\.kt'
+      reason: "Domain files that do not exist are named."
+      stable_because: "Deleted file names."
+    - pattern: ":core"
+      reason: "A module proposal that was resolved is described as open."
+      stable_because: "A module path settings.gradle.kts does not declare."
+    - pattern: '(^|[^a-z])model/ +#'
+      reason: "A layout tree lists a package that does not exist."
+      stable_because: "A deleted package path, matched in the tree's own comment form."
+    - pattern: "four Gradle modules"
+      reason: "The module count is stated as one the build no longer has."
+      stable_because: "A count that settings.gradle.kts contradicts; the computed check states the right one."
+    - pattern: '\b(previously|used to be|reversed|decided since|formerly|we changed|was rewritten|has been changed)\b'
+      reason: "A document carries an audit trail, which rule 4 keeps in git, issues and pull requests."
+      stable_because: "The words rule 4 bans, listed in the rule itself."
+      exempt:
+        - glob: "CLAUDE.md"
+          reason: "It states rule 4, and so names the words the rule forbids."
+    - pattern: '[Ѐ-ӿ]'
+      reason: "A document carries corpus-script text, which rule 3 forbids."
+      stable_because: "A Unicode block, not a wording."
+    - pattern: '\.\./\.\./|/Users/|/home/[a-z]'
+      reason: "A document names a path outside this repository, which rule 7 forbids."
+      stable_because: "The shape of an absolute or escaping path, not a particular one."
+    - pattern: '\([0-9]{1,2}:[0-9]{2}(:[0-9]{2})?\)'
+      reason: "A document cites a position in a recording a reader cannot open."
+      stable_because: "A bare parenthesised timestamp is written for nothing else here; durations are written in words."
+  quoted: []
+  box_diagrams:
+    held: true
+    exempt: []
 
 spec_corpus:
   carrier: none

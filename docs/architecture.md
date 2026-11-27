@@ -2920,6 +2920,8 @@ main-brain/
 ├── ruff.toml                        # the style; `ci.yml`'s path list decides what is read
 ├── .env.example                     # every variable the stack reads
 ├── .github/workflows/ci.yml         # jvm · python · docs · shell
+├── .github/workflows/mjolnir-*.yml  # the toolkit's gates: documents · end-to-end register
+├── .mjolnir/                        # the checkers those gates run, rendered by the toolkit
 ├── scripts/
 │   ├── check-docs.sh                # assertions over the documents; the `docs` CI job
 │   ├── deploy.sh                    # dev · prod; only dev is implemented
@@ -3347,6 +3349,11 @@ GitHub Actions, no secrets, four jobs:
 | `python` | `ruff check` over the three Python trees and the two programs the board and report scripts call — the last of these because a program inside a shell script is a string to `shellcheck` and to `bash -n` alike, and only a file is read before it runs. ⚠️ The step's path list is what decides coverage and selection is by extension, so the Python in `scripts/check-docs.sh`'s heredocs sits under a named path unread; `pytest` for `embeddings/`, and for the cases in `e2e/` that carry none of the markers naming something of the world. Neither a model nor the stack that runs one is downloaded: those are a separate requirements file that the image installs and the tests do not, and nothing in the sidecar imports an inference library at module scope |
 | `docs` | `./scripts/check-docs.sh` — assertions over the documents. Every one of them is hermetic, so a runner reaches the same verdict a checkout does; an assertion that cannot run reports SKIP rather than claiming a clean pass |
 | `shell` | `bash -n` and `shellcheck --severity=warning` over the `*.sh` of `scripts/` — the Python beside them is the `python` job's. That shell is read by something outside this build — a merge, a deploy, every Bash call the harness makes, and the facets of the toolkit the development process runs from — so a break in any of it surfaces where no suite is looking |
+
+Beside `ci.yml`, the toolkit's install writes two workflows of its own, each running a checker
+it renders into `.mjolnir/` from `.claude/mjolnir.yaml`: one holds the documents to the
+`documents` facet, the other holds a change to the end-to-end register. Neither file is
+edited by hand; the install rewrites both.
 
 **No job builds an image, and the deploy is the first thing that assembles one.** A runner
 starts with an empty cache, so building the sidecar would fetch its whole inference stack
