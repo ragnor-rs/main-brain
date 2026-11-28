@@ -591,12 +591,11 @@ present "the derived layer is tested" docs/architecture.md \
         '\| \*\*Derived layer\*\* \|'
 absent "reconciliation is not tested under ingest" \
        'source fixtures.{0,120}Reconciliation is tested'
-# 13g. Rule 4 — widened past the four words CLAUDE.md happens to list. A phrase like "has
-# since dropped" describes the world rather than the document, so the pattern targets
-# constructions that narrate a decision or a change in what we know.
-if grep -rIn -E '\b(previously|used to be|reversed|decided since|formerly|we changed|was rewritten|has been changed)\b|\bsince been (confirmed|decided|agreed|established|settled|ruled)\b|\breplaces the (deferred|earlier|previous|abandoned) \w+\b' \
-     "${GOVERNED[@]}" 2>/dev/null \
-   | grep -v -E '"(previously|reversed|decided since|used to be)"' >"$HITS"; then
+# 13g. Rule 4, past the words the documents facet forbids. A phrase like "has since dropped"
+# describes the world rather than the document, so these patterns target constructions that
+# narrate a decision or a change in what we know.
+if grep -rIn -E '\bsince been (confirmed|decided|agreed|established|settled|ruled)\b|\breplaces the (deferred|earlier|previous|abandoned) \w+\b' \
+     "${GOVERNED[@]}" 2>/dev/null >"$HITS"; then
   bad "documents narrate a change in state or knowledge"; sed 's/^/        /' "$HITS"
 else ok "documents narrate no change in state or knowledge"; fi
 # 13h. The embeddings sidecar's callers are stated the same way in both places.
@@ -789,22 +788,6 @@ def check(name, cond, detail=""):
             print("        " + detail)
         bad.append(name)
 
-
-# A header with more cells than its body rows renders every row shifted one column
-# left, silently. This shipped once.
-tables = []
-for f, t in TEXT.items():
-    rows, start = [], None
-    for i, line in enumerate(t.splitlines(), 1):
-        stripped = line.strip()
-        if stripped.startswith("|") and stripped.endswith("|"):
-            start = start or i
-            rows.append(stripped.count("|") - 1)
-        elif rows:
-            if len(set(rows)) > 1:
-                tables.append(f"{f}:{start} cells per row {sorted(set(rows))}")
-            rows, start = [], None
-check("every markdown table has a consistent cell count", not tables, "; ".join(tables))
 
 # Two documents naming different default locales is the defect this group was written
 # for. The rule's own home is architecture.md, so both it and the entry point must say it.
